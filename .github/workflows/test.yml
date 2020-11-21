@@ -16,13 +16,6 @@ jobs:
           github_token: ${{ github.token }}
           # paths_ignore: '["**/README.md", "**/docs/**"]'
 
-  main_job:
-    needs: skip_check
-    if: ${{ needs.skip_check.outputs.should_skip != 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Running slow tests..." && sleep 30
-
   test:
     needs: skip_check
     if: ${{ needs.skip_check.outputs.should_skip != 'true' }}
