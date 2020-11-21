@@ -56,3 +56,4 @@ jobs:
       - name: Build cartridge
         run: |
           tarantoolctl rocks make
+          ./init.lua
