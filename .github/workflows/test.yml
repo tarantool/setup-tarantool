@@ -1,59 +1,13 @@
 name: Build and Test
 
 on:
-  pull_request:
   push:
 
 jobs:
-  skip_check:
-    runs-on: ubuntu-latest
-    outputs:
-      should_skip: ${{ steps.skip_check.outputs.should_skip }}
-    steps:
-      - id: skip_check
-        uses: fkirc/skip-duplicate-actions@master
-        with:
-          github_token: ${{ github.token }}
-          # paths_ignore: '["**/README.md", "**/docs/**"]'
-
   test:
-    needs: skip_check
-    if: ${{ needs.skip_check.outputs.should_skip != 'true' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        runs-on: [ubuntu-latest, macos-latest]
-        tarantool: ['1.10']
-    runs-on: ${{ matrix.runs-on }}
-    env:
-      CMAKE_DUMMY_WEBUI: true
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-
-      - name: Install tarantool (apt)
-        if: matrix.runs-on == 'ubuntu-latest'
-        run: |
-          curl -L https://tarantool.io/installer.sh | sudo VER=${{ matrix.tarantool }}  bash
-          sudo apt install -y tarantool tarantool-dev
-
-      - name: Install tarantool (brew)
-        if: matrix.runs-on == 'macos-latest'
-        run: |
-          brew install tarantool
-
-      - name: Install ldoc
-        run: >
-          tarantoolctl rocks install --server=http://rocks.moonscript.org
-          https://raw.githubusercontent.com/tarantool/LDoc/tarantool/ldoc-scm-2.rockspec
-
-      - name: Install dependencies
-        run: |
-          tarantoolctl rocks install luacheck
-          tarantoolctl rocks install luacov
-          tarantoolctl rocks install luacov-console 1.1.0
-          tarantoolctl rocks install luatest 0.5.0
-
-      - name: Build cartridge
-        run: |
-          tarantoolctl rocks make
-          ./init.lua
+      - uses: ./
+        with:
+          tarantool-version: 2.6

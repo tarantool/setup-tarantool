@@ -1,0 +1,27 @@
+name: 'Setup tarantool'
+description: 'Setup tarantool environment and add it to the PATH'
+inputs:
+  tarantool-version:
+    description: 'Tarantool version'
+    default: '2.5'
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      env:
+        BASEURL: "https://download.tarantool.org/tarantool/release"
+      run: |
+        set -x
+        curl ${{ env.BASEURL }}/${{ inputs.tarantool-version }}/gpgkey | sudo apt-key add -
+        sudo rm -f /etc/apt/sources.list.d/*tarantool*.list
+        sudo tee /etc/apt/sources.list.d/tarantool.list << REPO
+          deb ${{ env.BASEURL }}/${{ inputs.tarantool-version }}/ubuntu/ $(lsb_release -s -c) main
+        REPO
+
+    - shell: bash
+      run: sudo apt-get update
+
+    - shell: bash
+      run: sudo apt-get install -y tarantool tarantool-dev
+
+
