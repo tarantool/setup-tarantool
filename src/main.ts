@@ -1,19 +1,35 @@
-import * as cache from "@actions/cache";
-import * as core from "@actions/core";
-import * as exec from "@actions/exec";
+import * as httpm from '@actions/http-client'
+import * as cache from '@actions/cache'
+import * as core from '@actions/core'
+import * as exec from '@actions/exec'
 
-async function run(): Promise<void> {
-    try {
-        const t_version = core.getInput('tarantool-version', { required: true });
+async function run_linux(): Promise<void> {
+  try {
+    const httpc = new httpm.HttpClient('httpc')
+    const t_version = core.getInput('tarantool-version', {required: true})
+    const baseUrl =
+      'https://download.tarantool.org/tarantool/release/' + t_version
 
-        core.warning('Hello, World!');
-        core.info('Output to the actions build log')
-        await exec.exec('"echo"', ['hello tarantool', t_version]);
-    } catch (error) {
-        core.setFailed(error.message);
+    const response = await httpc.get(baseUrl + '/gpgkey')
+    if (response.message.statusCode !== 200) {
+      throw new Error(
+        `curl ` + baseUrl + `/gpgkey: ${response.message.statusCode}`
+      )
     }
+    core.info(await response.readBody())
+  } catch (error) {
+    core.setFailed(error.message)
+  }
 }
 
-run();
+async function run(): Promise<void> {
+  if (process.platform === 'linux') {
+    return await run_linux()
+  } else {
+    core.setFailed(`Action doesn't support ${process.platform} platform`)
+  }
+}
 
-export default run;
+run()
+
+export default run
