@@ -4,8 +4,11 @@ import * as exec from "@actions/exec";
 
 async function run(): Promise<void> {
     try {
+        const t_version = core.getInput('tarantool-version', { required: true });
+
         core.warning('Hello, World!');
-        await exec.exec('"echo"', ['hello world']);
+        core.info('Output to the actions build log')
+        await exec.exec('"echo"', ['hello tarantool', t_version]);
     } catch (error) {
         core.setFailed(error.message);
     }
