@@ -1079,6 +1079,19 @@ async function run_linux() {
             const gpgkey = Buffer.from(await response.readBody());
             await exec.exec('sudo apt-key add - ', [], { input: gpgkey });
         });
+        await core.group('Setting up repository', async () => {
+            let release = '';
+            await exec.exec('lsb_release -c -s', [], {
+                listeners: {
+                    stdout: (data) => {
+                        release += data.toString();
+                    }
+                }
+            });
+            await exec.exec('sudo tee /etc/apt/sources.list.d/tarantool.list', [], {
+                input: Buffer.from(`deb ${baseUrl}/ubuntu/ ${release} main`)
+            });
+        });
     }
     catch (error) {
         core.setFailed(error.message);
