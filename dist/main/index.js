@@ -1068,8 +1068,10 @@ const exec = __importStar(__webpack_require__(986));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            const t_version = core.getInput('tarantool-version', { required: true });
             core.warning('Hello, World!');
-            yield exec.exec('"echo"', ['hello world']);
+            core.info('Output to the actions build log');
+            yield exec.exec('"echo"', ['hello tarantool', t_version]);
         }
         catch (error) {
             core.setFailed(error.message);

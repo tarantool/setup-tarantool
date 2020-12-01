@@ -1,0 +1,9 @@
+name: 'Setup tarantool'
+description: 'Setup tarantool environment and add it to the PATH'
+inputs:
+  tarantool-version:
+    description: 'Tarantool version'
+    default: '2.5'
+runs:
+  using: 'node12'
+  main: dist/main/index.js
