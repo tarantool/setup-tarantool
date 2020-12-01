@@ -10,13 +10,20 @@ async function run_linux(): Promise<void> {
     const baseUrl =
       'https://download.tarantool.org/tarantool/release/' + t_version
 
-    const response = await httpc.get(baseUrl + '/gpgkey')
-    if (response.message.statusCode !== 200) {
-      throw new Error(
-        `curl ` + baseUrl + `/gpgkey: ${response.message.statusCode}`
-      )
-    }
-    core.info(await response.readBody())
+    await core.group('Adding gpg key', async () => {
+      const url = baseUrl + '/gpgkey'
+      core.info('curl ' + url)
+
+      const response = await httpc.get(url)
+      if (response.message.statusCode !== 200) {
+        throw new Error(
+          'server replied ${response.message.statusCode}'
+        )
+      }
+
+      const gpgkey = Buffer.from(await response.readBody())
+      await exec.exec('sudo apt-key add - ', [], {input: gpgkey})
+    })
   } catch (error) {
     core.setFailed(error.message)
   }
