@@ -33,9 +33,18 @@ async function run_linux(): Promise<void> {
         }
       })
 
+      release = release.trim()
       await exec.exec('sudo tee /etc/apt/sources.list.d/tarantool.list', [], {
-        input: Buffer.from(`deb ${baseUrl}/ubuntu/ ${release} main`)
+        input: Buffer.from(`deb ${baseUrl}/ubuntu/ ${release} main\n`)
       })
+    })
+
+    await core.group('Running apt-get update', async () => {
+      await exec.exec('sudo apt-get update')
+    })
+
+    await core.group('Installing tarantool', async () => {
+      await exec.exec('sudo apt-get install -y tarantool tarantool-dev')
     })
   } catch (error) {
     core.setFailed(error.message)
