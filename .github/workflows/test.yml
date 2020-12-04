@@ -9,9 +9,19 @@ jobs:
       fail-fast: false
       matrix:
         runs-on: [ubuntu-latest]
+        tarantool: ['2.6']
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@v2
-      - uses: ./
+
+      - name: Setup from scratch
+        uses: ./
         with:
-          tarantool-version: '2.6'
+          tarantool-version: ${{ matrix.tarantool }}
+          cache-key: tarantool-${{ matrix.tarantool }}-${{ runner.os }}-${{ github.run_id }}
+
+      # - name: Setup from cache
+      #   uses: ./
+      #   with:
+      #     tarantool-version: ${{ matrix.tarantool }}
+      #     cache-key: tarantool-${{ matrix.tarantool }}-${{ runner.os }}-${{ github.run_id }}

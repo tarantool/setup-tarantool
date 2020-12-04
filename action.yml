@@ -4,6 +4,9 @@ inputs:
   tarantool-version:
     description: 'Tarantool version'
     default: '2.5'
+  cache-key:
+    description: 'The key used for caching apt packages'
+    required: true
 runs:
   using: 'node12'
   main: dist/main/index.js
