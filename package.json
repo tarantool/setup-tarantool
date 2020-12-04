@@ -5,7 +5,8 @@
   "main": "dist/main/index.js",
   "scripts": {
     "tsc": "tsc && ncc build src/main.ts -o dist/main",
-    "format": "prettier --write **/*.ts"
+    "format": "prettier --write **/*.ts",
+    "pre-checkin": "npm run format && npm run tsc"
   },
   "repository": {
     "type": "git",

@@ -1096,8 +1096,38 @@ async function run_linux() {
         await core.group('Running apt-get update', async () => {
             await exec.exec('sudo apt-get update');
         });
+        let dpkg_diff = new Set();
         await core.group('Installing tarantool', async () => {
+            async function dpkg_list() {
+                let output = '';
+                await exec.exec('sudo dpkg-query -W -f "${binary:Package}\\n"', [], {
+                    silent: true,
+                    listeners: {
+                        stdout: (data) => {
+                            output += data.toString();
+                        }
+                    }
+                });
+                let ret = new Set();
+                output
+                    .trim()
+                    .split('\n')
+                    .forEach(l => {
+                    ret.add(l);
+                });
+                return ret;
+            }
+            const dpkg_before = await dpkg_list();
             await exec.exec('sudo apt-get install -y tarantool tarantool-dev');
+            const dpkg_after = await dpkg_list();
+            dpkg_after.forEach(l => {
+                if (!dpkg_before.has(l)) {
+                    dpkg_diff.add(l);
+                }
+            });
+        });
+        dpkg_diff.forEach(l => {
+            core.info('New deb package: ' + l);
         });
     }
     catch (error) {
