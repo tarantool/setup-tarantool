@@ -9,7 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         runs-on: [ubuntu-latest]
-        tarantool: ['2.6']
+        tarantool: ['1.10', '2.4', '2.5', '2.6', '2.7']
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@v2
@@ -20,8 +20,22 @@ jobs:
           tarantool-version: ${{ matrix.tarantool }}
           cache-key: tarantool-${{ matrix.tarantool }}-${{ runner.os }}-${{ github.run_id }}
 
-      # - name: Setup from cache
-      #   uses: ./
-      #   with:
-      #     tarantool-version: ${{ matrix.tarantool }}
-      #     cache-key: tarantool-${{ matrix.tarantool }}-${{ runner.os }}-${{ github.run_id }}
+      - name: Uninstall tarantool
+        run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
+
+      - name: Setup from cache
+        uses: ./
+        with:
+          tarantool-version: ${{ matrix.tarantool }}
+          cache-key: tarantool-${{ matrix.tarantool }}-${{ runner.os }}-${{ github.run_id }}
+
+      - run: tarantool --version
+      - name: Check version
+        run: |
+          T=$(tarantool -e 'print(_TARANTOOL:match("%d+%.%d+")); os.exit()')
+          if [ "$T" != "${{ matrix.tarantool }}" ]; then
+            echo "Tarantool version is $T, expected ${{ matrix.tarantool }}"
+            exit 1
+          else
+            echo "Tarantool version is $T, as expected"
+          fi
