@@ -2,12 +2,9 @@ name: 'Setup tarantool'
 description: 'Setup tarantool environment and add it to the PATH'
 inputs:
   tarantool-version:
-    description: 'Tarantool version'
-    default: '2.5'
+    description: Tarantool version
   cache-key:
-    description: >
-      Custom key used for apt packages caching.
-      Default is "tarantool-<VERSION>-<RUNNER.OS>"
+    description: Custom key used for APT packages caching
     required: false
 runs:
   using: 'node12'
