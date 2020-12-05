@@ -8,8 +8,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runs-on: [ubuntu-latest]
+        runs-on: [ubuntu-20.04]
         tarantool: ['1.10', '2.4', '2.5', '2.6', '2.7']
+        include:
+        - {runs-on: ubuntu-18.04, tarantool: '1.10'}
+        - {runs-on: ubuntu-16.04, tarantool: '1.10'}
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@v2
@@ -18,7 +21,7 @@ jobs:
         uses: ./
         with:
           tarantool-version: ${{ matrix.tarantool }}
-          cache-key: tarantool-${{ matrix.tarantool }}-${{ runner.os }}-${{ github.run_id }}
+          cache-key: tarantool-${{ matrix.tarantool }}-${{ matrix.runs-on }}-${{ github.run_id }}
 
       - name: Uninstall tarantool
         run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
@@ -27,9 +30,8 @@ jobs:
         uses: ./
         with:
           tarantool-version: ${{ matrix.tarantool }}
-          cache-key: tarantool-${{ matrix.tarantool }}-${{ runner.os }}-${{ github.run_id }}
+          cache-key: tarantool-${{ matrix.tarantool }}-${{ matrix.runs-on }}-${{ github.run_id }}
 
-      - run: tarantool --version
       - name: Check version
         run: |
           T=$(tarantool -e 'print(_TARANTOOL:match("%d+%.%d+")); os.exit()')

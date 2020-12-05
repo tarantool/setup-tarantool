@@ -40,20 +40,19 @@ async function run_linux(): Promise<void> {
   try {
     const httpc = new httpm.HttpClient('httpc')
     const t_version = core.getInput('tarantool-version', {required: true})
-
-    let cache_key = core.getInput('cache-key', {required: false})
-    if (!cache_key) {
-      cache_key = 'tarantool-setup-' + process.platform + '-' + t_version
-    }
-
-    const cache_dir = path.join(cache_key)
+    const lsb_release = await capture('lsb_release -c -s', {silent: true})
+    const cache_dir = 'cache-tarantool'
+    const cache_key =
+      core.getInput('cache-key') ||
+      `tarantool-setup-${t_version}-${lsb_release}`
 
     if (await cache.restoreCache([cache_dir], cache_key)) {
-      for (const f of fs.readdirSync(cache_dir)) {
-        await exec.exec(`sudo cp -f -r "${cache_dir}/${f}" /`)
-      }
+      core.info(`Cache restored from key: ${cache_key}`)
+      await exec.exec(`sudo rsync -aK "${cache_dir}/" /`)
       await io.rmRF(cache_dir)
       return
+    } else {
+      core.info(`Cache not found for input key: ${cache_key}`)
     }
 
     const baseUrl =
@@ -73,9 +72,8 @@ async function run_linux(): Promise<void> {
     })
 
     await core.group('Setting up repository', async () => {
-      const release = await capture('lsb_release -c -s')
       await exec.exec('sudo tee /etc/apt/sources.list.d/tarantool.list', [], {
-        input: Buffer.from(`deb ${baseUrl}/ubuntu/ ${release} main\n`)
+        input: Buffer.from(`deb ${baseUrl}/ubuntu/ ${lsb_release} main\n`)
       })
     })
 
@@ -83,38 +81,35 @@ async function run_linux(): Promise<void> {
       await exec.exec('sudo apt-get update')
     })
 
-    let dpkg_diff: Array<string>
+    core.startGroup('Installing tarantool')
 
-    await core.group('Installing tarantool', async () => {
-      const dpkg_before = await dpkg_list()
-      await exec.exec('sudo apt-get install -y tarantool tarantool-dev')
-      const dpkg_after = await dpkg_list()
+    const dpkg_before = await dpkg_list()
+    await exec.exec('sudo apt-get install -y tarantool tarantool-dev')
+    const dpkg_after = await dpkg_list()
 
-      dpkg_diff = Array.from(dpkg_after.values()).filter(
-        pkg => !dpkg_before.has(pkg)
-      )
-    })
+    const dpkg_diff: Array<string> = Array.from(dpkg_after.values()).filter(
+      pkg => !dpkg_before.has(pkg)
+    )
 
-    await core.group('Cache apt packages', async () => {
-      core.info('Will cache ' + dpkg_diff.join(', '))
-      // let paths: Array<string> = []
+    core.endGroup()
 
-      for (const pkg of dpkg_diff) {
-        const output = await capture(`sudo dpkg -L ${pkg}`, {silent: true})
-        const files: Array<string> = output
-          .split('\n')
-          .filter(f => fs.statSync(f).isFile())
-        for (const f of files) {
-          const dest = path.join(cache_dir, path.dirname(f))
-          await io.mkdirP(dest)
-          await io.cp(f, dest)
-        }
+    core.info('Caching APT packages: ' + dpkg_diff.join(', '))
+
+    for (const pkg of dpkg_diff) {
+      const output = await capture(`sudo dpkg -L ${pkg}`, {silent: true})
+      const files: Array<string> = output
+        .split('\n')
+        .filter(f => fs.statSync(f).isFile())
+      for (const f of files) {
+        const dest = path.join(cache_dir, path.dirname(f))
+        await io.mkdirP(dest)
+        await io.cp(f, dest)
       }
+    }
 
-      await cache.saveCache([cache_dir], cache_key)
-      core.info(`Cache saved with key: ${cache_key}`)
-      await io.rmRF(cache_dir)
-    })
+    await cache.saveCache([cache_dir], cache_key)
+    core.info(`Cache saved with key: ${cache_key}`)
+    await io.rmRF(cache_dir)
   } catch (error) {
     core.setFailed(error.message)
   }
@@ -122,10 +117,12 @@ async function run_linux(): Promise<void> {
 
 async function run(): Promise<void> {
   if (process.platform === 'linux') {
-    return await run_linux()
+    await run_linux()
   } else {
     core.setFailed(`Action doesn't support ${process.platform} platform`)
   }
+
+  await exec.exec('tarantool --version')
 }
 
 run()
