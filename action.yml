@@ -1,5 +1,8 @@
 name: 'Setup tarantool'
-description: 'Setup tarantool environment and add it to the PATH'
+description: 'Setup tarantool environment with caching'
+branding:
+  icon: 'code'
+  color: 'red'
 inputs:
   tarantool-version:
     description: Tarantool version
