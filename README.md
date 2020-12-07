@@ -17,7 +17,9 @@ steps:
   - uses: rosik/setup-tarantool@v1
     with:
       tarantool-version: '2.5'
+  - run: tarantoolctl rocks install luatest
   - run: tarantoolctl rocks make
+  - run: .rocks/bin/luatest -v
 ```
 
 ### Custom cache key
