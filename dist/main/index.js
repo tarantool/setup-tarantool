@@ -3472,8 +3472,14 @@ async function run_linux() {
                 await io.cp(f, dest);
             }
         }
-        await cache.saveCache([cache_dir], cache_key);
-        core.info(`Cache saved with key: ${cache_key}`);
+        try {
+            await cache.saveCache([cache_dir], cache_key);
+            core.info(`Cache saved with key: ${cache_key}`);
+        }
+        catch (error) {
+            core.warning(error.message);
+            core.warning(`Saving cache failed, but it's not crucial`);
+        }
         await io.rmRF(cache_dir);
     }
     catch (error) {

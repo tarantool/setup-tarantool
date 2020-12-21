@@ -41,3 +41,17 @@ jobs:
           else
             echo "Tarantool version is $T, as expected"
           fi
+
+  test-concurrency:
+    strategy:
+      fail-fast: false
+      matrix:
+        runs-on: [ubuntu-20.04, ubuntu-20.04, ubuntu-20.04]
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Tarantool
+        uses: ./
+        with:
+          tarantool-version: '1.10'
+          cache-key: test-concurrency-${{ github.run_id }}
