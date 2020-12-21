@@ -1,3 +1,5 @@
+![Test](https://github.com/rosik/setup-tarantool/workflows/Test/badge.svg)
+
 # Setup Tarantool
 
 This action will set up [Tarantool](https://www.tarantool.io) environment and **cache the packages**.
