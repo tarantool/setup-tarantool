@@ -1,4 +1,4 @@
-![Test](https://github.com/rosik/setup-tarantool/workflows/Test/badge.svg)
+![Test](https://github.com/tarantool/setup-tarantool/workflows/Test/badge.svg)
 
 # Setup Tarantool
 
@@ -16,7 +16,7 @@ This action will set up [Tarantool](https://www.tarantool.io) environment and **
 ```yaml
 steps:
   - uses: actions/checkout@v2
-  - uses: rosik/setup-tarantool@v1
+  - uses: tarantool/setup-tarantool@v1
     with:
       tarantool-version: '2.5'
   - run: tarantoolctl rocks install luatest
@@ -34,7 +34,7 @@ If you need to drop the cache, it's customizable:
 
 ```yaml
 steps:
-  - uses: rosik/setup-tarantool@v1
+  - uses: tarantool/setup-tarantool@v1
     with:
       tarantool-version: 2.5
       cache-key: some-other-key
