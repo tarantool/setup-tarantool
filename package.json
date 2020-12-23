@@ -1,5 +1,5 @@
 {
-  "name": "ga-test-public",
+  "name": "setup-tarantool",
   "version": "1.0.0",
   "description": "",
   "main": "dist/main/index.js",
@@ -10,15 +10,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rosik/ga-test-public.git"
+    "url": "git+https://github.com/tarantool/setup-tarantool.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/rosik/ga-test-public/issues"
+    "url": "https://github.com/tarantool/setup-tarantool/issues"
   },
-  "homepage": "https://github.com/rosik/ga-test-public#readme",
+  "homepage": "https://github.com/tarantool/setup-tarantool#readme",
   "dependencies": {
     "@actions/cache": "^1.0.4",
     "@actions/core": "^1.2.6",
