@@ -9,19 +9,41 @@ jobs:
       fail-fast: false
       matrix:
         runs-on: [ubuntu-20.04]
-        tarantool: ['1.10', '2.4', '2.5', '2.6', '2.7']
+        tarantool:
+          - '1.10'
+          - '2.4'
+          - '2.5'
+          - '2.6'
+          - '2.7'
+          - '2.8'
         include:
         - {runs-on: ubuntu-18.04, tarantool: '1.10'}
         - {runs-on: ubuntu-16.04, tarantool: '1.10'}
     runs-on: ${{ matrix.runs-on }}
+    env:
+      TARANTOOL_CACHE_KEY_SUFFIX: -${{ github.run_id }}
     steps:
       - uses: actions/checkout@v2
+
+      - id: get-latest
+        run: |
+          node <<'SCRIPT'
+            process.env["INPUT_TARANTOOL-VERSION"] = "${{ matrix.tarantool }}"
+            require("./dist/main").latest_version().then(v => {
+              console.log(v)
+              console.log(`::set-output name=version::${v}`)
+            })
+          SCRIPT
 
       - name: Setup from scratch
         uses: ./
         with:
           tarantool-version: ${{ matrix.tarantool }}
-          cache-key: tarantool-${{ matrix.tarantool }}-${{ matrix.runs-on }}-${{ github.run_id }}
+
+      - name: Check precise version
+        run: |
+          dpkg -s tarantool | grep '^Version: ${{ steps.get-latest.outputs.version }}'
+          # It'll also fail if tarantool is installed from cache but not from apt-get
 
       - name: Uninstall tarantool
         run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
@@ -30,9 +52,8 @@ jobs:
         uses: ./
         with:
           tarantool-version: ${{ matrix.tarantool }}
-          cache-key: tarantool-${{ matrix.tarantool }}-${{ matrix.runs-on }}-${{ github.run_id }}
 
-      - name: Check version
+      - name: Check branch version
         run: |
           T=$(tarantool -e 'print(_TARANTOOL:match("%d+%.%d+")); os.exit()')
           if [ "$T" != "${{ matrix.tarantool }}" ]; then
@@ -48,10 +69,11 @@ jobs:
       matrix:
         runs-on: [ubuntu-20.04, ubuntu-20.04, ubuntu-20.04]
     runs-on: ${{ matrix.runs-on }}
+    env:
+      TARANTOOL_CACHE_KEY_SUFFIX: -${{ github.run_id }}
     steps:
       - uses: actions/checkout@v2
       - name: Setup Tarantool
         uses: ./
         with:
           tarantool-version: '1.10'
-          cache-key: test-concurrency-${{ github.run_id }}

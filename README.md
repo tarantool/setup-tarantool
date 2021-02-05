@@ -7,7 +7,7 @@ This action will set up [Tarantool](https://www.tarantool.io) environment and **
 - When cached, it takes \~1-2s to finish.
 - The first run takes \~40s.
 - Cache size is \~20MB.
-- Runs on `ubuntu-*` only.
+- Runs on GitHub-hosted `ubuntu-*` runners only.
 
 # Usage
 
@@ -18,26 +18,10 @@ steps:
   - uses: actions/checkout@v2
   - uses: tarantool/setup-tarantool@v1
     with:
-      tarantool-version: '2.5'
+      tarantool-version: '2.6'
   - run: tarantoolctl rocks install luatest
   - run: tarantoolctl rocks make
   - run: .rocks/bin/luatest -v
-```
-
-### Custom cache key
-
-By default, the action caches installed apt packages with the key:
-
-```tarantool-setup-${tarantool-version}-${ubuntu-version}```
-
-If you need to drop the cache, it's customizable:
-
-```yaml
-steps:
-  - uses: tarantool/setup-tarantool@v1
-    with:
-      tarantool-version: 2.5
-      cache-key: some-other-key
 ```
 
 # License
