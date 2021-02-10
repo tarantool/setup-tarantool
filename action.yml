@@ -7,8 +7,8 @@ inputs:
   tarantool-version:
     description: Tarantool version
   cache-key:
-    description: Custom key used for APT packages caching
+    description: Deprecated. Custom key used for APT packages caching
     required: false
 runs:
   using: 'node12'
-  main: dist/main/index.js
+  main: dist/index.js

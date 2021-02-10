@@ -3392,6 +3392,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.run = exports.latest_version = void 0;
 const httpm = __importStar(__webpack_require__(539));
 const cache = __importStar(__webpack_require__(692));
 const core = __importStar(__webpack_require__(470));
@@ -3399,6 +3400,8 @@ const exec = __importStar(__webpack_require__(986));
 const io = __importStar(__webpack_require__(1));
 const path = __importStar(__webpack_require__(622));
 const fs = __importStar(__webpack_require__(747));
+const baseUrl = 'https://download.tarantool.org/tarantool/release/' +
+    core.getInput('tarantool-version', { required: true });
 async function capture(cmd, options) {
     let output = '';
     await exec.exec(cmd, [], {
@@ -3411,6 +3414,21 @@ async function capture(cmd, options) {
     });
     return output.trim();
 }
+let _lsb_release;
+async function lsb_release() {
+    if (!_lsb_release) {
+        _lsb_release = capture('lsb_release -c -s', { silent: true });
+    }
+    return _lsb_release;
+}
+let _httpc;
+async function http_get(url) {
+    if (!_httpc) {
+        _httpc = new httpm.HttpClient('httpc');
+    }
+    core.info('HTTP GET ' + url);
+    return _httpc.get(url);
+}
 async function dpkg_list() {
     const cmd = 'sudo dpkg-query -W -f "${binary:Package}\\n"';
     const output = await capture(cmd, { silent: true });
@@ -3418,14 +3436,62 @@ async function dpkg_list() {
     output.split('\n').forEach(l => ret.add(l));
     return ret;
 }
+function semver_max(a, b) {
+    const re = /[.-]/;
+    var pa = a.split(re);
+    var pb = b.split(re);
+    for (var i = 0;; i++) {
+        var na = Number(pa[i]);
+        var nb = Number(pb[i]);
+        if (na > nb)
+            return a;
+        if (nb > na)
+            return b;
+        if (!isNaN(na) && isNaN(nb))
+            return a;
+        if (isNaN(na) && !isNaN(nb))
+            return b;
+        if (isNaN(na) && isNaN(nb))
+            return pa[i] >= pb[i] ? a : b;
+    }
+}
+async function latest_version() {
+    const repo = baseUrl + '/ubuntu/dists/' + (await lsb_release());
+    return http_get(`${repo}/main/binary-amd64/Packages`)
+        .then(response => {
+        if (response.message.statusCode !== 200) {
+            throw new Error(`server replied ${response.message.statusCode}`);
+        }
+        return response.readBody();
+    })
+        .then(output => {
+        let ret = '';
+        output
+            .split('\n\n')
+            .filter(paragraph => paragraph.startsWith('Package: tarantool\n'))
+            .forEach(paragraph => {
+            const match = paragraph.match(/^Version: (.+)$/m);
+            const version = match ? match[1] : ret;
+            ret = semver_max(ret, version);
+        });
+        return ret;
+    });
+}
+exports.latest_version = latest_version;
 async function run_linux() {
     try {
-        const httpc = new httpm.HttpClient('httpc');
-        const t_version = core.getInput('tarantool-version', { required: true });
-        const lsb_release = await capture('lsb_release -c -s', { silent: true });
+        const distro = await lsb_release();
         const cache_dir = 'cache-tarantool';
-        const cache_key = core.getInput('cache-key') ||
-            `tarantool-setup-${t_version}-${lsb_release}`;
+        core.startGroup('Checking latest tarantool version');
+        const version = await latest_version();
+        core.info(`${version}`);
+        core.endGroup();
+        if (core.getInput('cache-key')) {
+            core.warning("Setup-tarantool input 'cache-key' is deprecated");
+        }
+        let cache_key = `tarantool-setup-${distro}-${version}`;
+        // This for testing only
+        cache_key += process.env['TARANTOOL_CACHE_KEY_SUFFIX'] || '';
         if (await cache.restoreCache([cache_dir], cache_key)) {
             core.info(`Cache restored from key: ${cache_key}`);
             await exec.exec(`sudo rsync -aK "${cache_dir}/" /`);
@@ -3435,20 +3501,17 @@ async function run_linux() {
         else {
             core.info(`Cache not found for input key: ${cache_key}`);
         }
-        const baseUrl = 'https://download.tarantool.org/tarantool/release/' + t_version;
         await core.group('Adding gpg key', async () => {
-            const url = baseUrl + '/gpgkey';
-            core.info('curl ' + url);
-            const response = await httpc.get(url);
+            const response = await http_get(baseUrl + '/gpgkey');
             if (response.message.statusCode !== 200) {
-                throw new Error('server replied ${response.message.statusCode}');
+                throw new Error(`server replied ${response.message.statusCode}`);
             }
             const gpgkey = Buffer.from(await response.readBody());
             await exec.exec('sudo apt-key add - ', [], { input: gpgkey });
         });
         await core.group('Setting up repository', async () => {
             await exec.exec('sudo tee /etc/apt/sources.list.d/tarantool.list', [], {
-                input: Buffer.from(`deb ${baseUrl}/ubuntu/ ${lsb_release} main\n`)
+                input: Buffer.from(`deb ${baseUrl}/ubuntu/ ${distro} main\n`)
             });
         });
         await core.group('Running apt-get update', async () => {
@@ -3495,8 +3558,7 @@ async function run() {
     }
     await exec.exec('tarantool --version');
 }
-run();
-exports.default = run;
+exports.run = run;
 
 
 /***/ }),
