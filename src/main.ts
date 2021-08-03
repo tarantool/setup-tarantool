@@ -7,8 +7,11 @@ import * as io from '@actions/io'
 import * as path from 'path'
 import * as fs from 'fs'
 
+const nightlyBuild =
+  (core.getInput('nightly-build') || 'false').toUpperCase() === 'TRUE'
 const baseUrl =
-  'https://download.tarantool.org/tarantool/release/' +
+  'https://download.tarantool.org/tarantool/' +
+  (nightlyBuild ? '' : 'release/') +
   core.getInput('tarantool-version', {required: true})
 
 interface CaptureOptions {

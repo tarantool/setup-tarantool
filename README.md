@@ -24,6 +24,17 @@ steps:
   - run: .rocks/bin/luatest -v
 ```
 
+### Install a nightly build
+
+```yaml
+steps:
+  - uses: actions/checkout@v2
+  - uses: tarantool/setup-tarantool@v1
+    with:
+      tarantool-version: '2.6'
+      nightly-build: true
+```
+
 # License
 
 The scripts and documentation in this project are released under the [MIT License](LICENSE).
