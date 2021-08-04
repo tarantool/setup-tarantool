@@ -3400,7 +3400,9 @@ const exec = __importStar(__webpack_require__(986));
 const io = __importStar(__webpack_require__(1));
 const path = __importStar(__webpack_require__(622));
 const fs = __importStar(__webpack_require__(747));
-const baseUrl = 'https://download.tarantool.org/tarantool/release/' +
+const nightlyBuild = (core.getInput('nightly-build') || 'false').toUpperCase() === 'TRUE';
+const baseUrl = 'https://download.tarantool.org/tarantool/' +
+    (nightlyBuild ? '' : 'release/') +
     core.getInput('tarantool-version', { required: true });
 async function capture(cmd, options) {
     let output = '';

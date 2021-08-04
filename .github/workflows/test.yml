@@ -16,12 +16,14 @@ jobs:
           - '2.6'
           - '2.7'
           - '2.8'
+          - '2.9'
+        nightly: [false]
         include:
-        - {runs-on: ubuntu-18.04, tarantool: '1.10'}
-        - {runs-on: ubuntu-16.04, tarantool: '1.10'}
+        - {runs-on: ubuntu-18.04, tarantool: '1.10', nightly: true}
+        - {runs-on: ubuntu-16.04, tarantool: '1.10', nightly: true}
     runs-on: ${{ matrix.runs-on }}
     env:
-      TARANTOOL_CACHE_KEY_SUFFIX: -${{ github.run_id }}
+      TARANTOOL_CACHE_KEY_SUFFIX: -A-${{ github.run_id }}
     steps:
       - uses: actions/checkout@v2
 
@@ -29,6 +31,7 @@ jobs:
         run: |
           node <<'SCRIPT'
             process.env["INPUT_TARANTOOL-VERSION"] = "${{ matrix.tarantool }}"
+            process.env["INPUT_NIGHTLY-BUILD"] = "${{ matrix.nightly }}"
             require("./dist/main").latest_version().then(v => {
               console.log(v)
               console.log(`::set-output name=version::${v}`)
@@ -39,6 +42,7 @@ jobs:
         uses: ./
         with:
           tarantool-version: ${{ matrix.tarantool }}
+          nightly-build: ${{ matrix.nightly }}
 
       - name: Check precise version
         run: |
@@ -52,6 +56,15 @@ jobs:
         uses: ./
         with:
           tarantool-version: ${{ matrix.tarantool }}
+          nightly-build: ${{ matrix.nightly }}
+
+      - name: Verify install from cache
+        run: |
+          # Fail if tarantool is installed from apt-get
+          if dpkg -s tarantool; then
+            echo "Tarantool wasn't restored from cache"
+            exit 1
+          fi
 
       - name: Check branch version
         run: |
@@ -70,7 +83,7 @@ jobs:
         runs-on: [ubuntu-20.04, ubuntu-20.04, ubuntu-20.04]
     runs-on: ${{ matrix.runs-on }}
     env:
-      TARANTOOL_CACHE_KEY_SUFFIX: -${{ github.run_id }}
+      TARANTOOL_CACHE_KEY_SUFFIX: -B-${{ github.run_id }}
     steps:
       - uses: actions/checkout@v2
       - name: Setup Tarantool

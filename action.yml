@@ -6,6 +6,10 @@ branding:
 inputs:
   tarantool-version:
     description: Tarantool version
+  nightly-build:
+    description: Whether to install a nightly build
+    required: false
+    default: false
   cache-key:
     description: Deprecated. Custom key used for APT packages caching
     required: false
