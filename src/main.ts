@@ -12,7 +12,7 @@ const nightlyBuild =
 const baseUrl =
   'https://download.tarantool.org/tarantool/' +
   (nightlyBuild ? '' : 'release/') +
-  core.getInput('tarantool-version', {required: true})
+  core.getInput('tarantool-version')
 
 interface CaptureOptions {
   /** optional.  defaults to false */
@@ -185,9 +185,21 @@ async function run_linux(): Promise<void> {
   }
 }
 
+async function run_macos(): Promise<void> {
+  try {
+    core.startGroup('Installing tarantool')
+    await exec.exec(`brew install tarantool`)
+    core.endGroup()
+  } catch (error) {
+    core.setFailed(error.message)
+  }
+}
+
 export async function run(): Promise<void> {
   if (process.platform === 'linux') {
     await run_linux()
+  } else if (process.platform === 'darwin') {
+    await run_macos()
   } else {
     core.setFailed(`Action doesn't support ${process.platform} platform`)
   }

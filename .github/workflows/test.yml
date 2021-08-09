@@ -75,6 +75,22 @@ jobs:
           else
             echo "Tarantool version is $T, as expected"
           fi
+  test-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        runs-on: [macos-latest]
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup from scratch
+        uses: ./
+
+      - name: Check branch version
+        run: |
+          T=$(tarantool -e 'print(_TARANTOOL:match("%d+%.%d+")); os.exit()')
+          echo "Tarantool version is $T"
 
   test-concurrency:
     strategy:
