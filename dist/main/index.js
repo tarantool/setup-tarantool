@@ -58023,9 +58023,11 @@ const io = __importStar(__nccwpck_require__(7436));
 const path = __importStar(__nccwpck_require__(1017));
 const fs = __importStar(__nccwpck_require__(7147));
 const nightlyBuild = (core.getInput('nightly-build') || 'false').toUpperCase() === 'TRUE';
+const tarantool_version = core.getInput('tarantool-version', { required: true });
+const tarantool_series = tarantool_version.split('.', 2).join('.');
 const baseUrl = 'https://download.tarantool.org/tarantool/' +
     (nightlyBuild ? '' : 'release/') +
-    core.getInput('tarantool-version', { required: true });
+    tarantool_series;
 async function capture(cmd, options) {
     let output = '';
     await exec.exec(cmd, [], {
@@ -58079,8 +58081,10 @@ function semver_max(a, b) {
             return pa[i] >= pb[i] ? a : b;
     }
 }
-async function latest_version() {
+async function available_versions(version_prefix) {
     const repo = baseUrl + '/ubuntu/dists/' + (await lsb_release());
+    // Don't return 1.10.10, when the version prefix is 1.10.1.
+    const prefix = version_prefix ? version_prefix + '.' : '';
     return http_get(`${repo}/main/binary-amd64/Packages`)
         .then(response => {
         if (response.message.statusCode !== 200) {
@@ -58089,16 +58093,29 @@ async function latest_version() {
         return response.readBody();
     })
         .then(output => {
-        let ret = '';
+        let versions = new Array();
         output
             .split('\n\n')
             .filter(paragraph => paragraph.startsWith('Package: tarantool\n'))
             .forEach(paragraph => {
             const match = paragraph.match(/^Version: (.+)$/m);
-            const version = match ? match[1] : ret;
-            ret = semver_max(ret, version);
+            if (match) {
+                let v = match[1];
+                if (!prefix || v.startsWith(prefix)) {
+                    versions.push(v);
+                }
+            }
         });
-        return ret;
+        return versions;
+    });
+}
+async function latest_version(version_prefix) {
+    return available_versions(version_prefix).then(versions => {
+        let max = '';
+        versions.forEach(v => {
+            max = semver_max(max, v);
+        });
+        return max;
     });
 }
 exports.latest_version = latest_version;
@@ -58106,8 +58123,8 @@ async function run_linux() {
     try {
         const distro = await lsb_release();
         const cache_dir = 'cache-tarantool';
-        core.startGroup('Checking latest tarantool version');
-        const version = await latest_version();
+        core.startGroup(`Checking latest tarantool ${tarantool_version} version`);
+        const version = await latest_version(tarantool_version);
         core.info(`${version}`);
         core.endGroup();
         if (core.getInput('cache-key')) {
@@ -58143,7 +58160,7 @@ async function run_linux() {
         });
         core.startGroup('Installing tarantool');
         const dpkg_before = await dpkg_list();
-        await exec.exec('sudo apt-get install -y tarantool tarantool-dev');
+        await exec.exec(`sudo apt-get install -y tarantool=${version}* tarantool-dev=${version}*`);
         const dpkg_after = await dpkg_list();
         const dpkg_diff = Array.from(dpkg_after.values()).filter(pkg => !dpkg_before.has(pkg));
         core.endGroup();

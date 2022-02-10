@@ -1,0 +1,49 @@
+# This action is supposed to be used in setup-tarantool CI.
+#
+# It verifies currently installed tarantool against two
+# properties:
+#
+# 1. Tarantool version matches provided version prefix.
+# 2. Tarantool is installed by apt-get/from cache.
+#
+# Usage example:
+#
+# - steps:
+#   - uses: ./.github/actions/verify-version
+#     with:
+#       tarantool-version: '1.10.12' # don't miss quotes!
+#       from-cache: false
+
+name: 'Verify tarantool version'
+description: 'Verify that installed tarantool has given version'
+inputs:
+  tarantool-version:
+    description: 'Expected tarantool version (version string prefix)'
+    required: true
+  from-cache:
+    description: 'Expect tarantool from cache or from apt-get (if omitted, does not perform the check)'
+    required: false
+    default: ''
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify tarantool version
+      run: |
+        tarantool -e "assert(_TARANTOOL:startswith('${{ inputs.tarantool-version }}'), _TARANTOOL)"
+      shell: bash
+
+    - name: Verify that tarantool is installed from the cache
+      run: |
+        if dpkg --status tarantool; then
+          echo "Tarantool is installed by apt-get, but it is expected that"
+          echo "tarantool will be installed from the cache"
+          exit 1
+        fi
+      if: inputs.from-cache == 'true'
+      shell: bash
+
+    - name: Verify that tarantool is installed by apt-get (not from the cache)
+      run: |
+        dpkg --status tarantool
+      if: inputs.from-cache == 'false'
+      shell: bash

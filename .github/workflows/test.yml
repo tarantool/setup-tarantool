@@ -90,3 +90,214 @@ jobs:
         uses: ./
         with:
           tarantool-version: '1.10'
+
+  # This test case performs basic test of the three digit version
+  # support.
+  #
+  # It performs the following steps and checks.
+  #
+  # - install 1.10.12
+  #   - checks: version, non-cached
+  # - uninstall tarantool
+  # - install 1.10.12
+  #   - checks: version, cached
+  # - install 1.10.LATEST
+  #   - checks: version, non-cached
+  test-exact-version-basic:
+    runs-on: ubuntu-latest
+    env:
+      TARANTOOL_CACHE_KEY_SUFFIX: -C-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - id: latest-version
+        uses: ./.github/actions/latest-version
+        with:
+          tarantool-series: '1.10'
+
+      - name: Install 1.10.12 (non-cached)
+        uses: ./
+        with:
+          tarantool-version: '1.10.12'
+          nightly-build: false
+
+      - uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '1.10.12-0'
+          from-cache: false
+
+      - name: Uninstall tarantool
+        run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
+
+      - name: Install 1.10.12 (cached)
+        uses: ./
+        with:
+          tarantool-version: '1.10.12'
+          nightly-build: false
+
+      - uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '1.10.12-0'
+          from-cache: true
+
+      - name: Install 1.10.LATEST (non-cached)
+        uses: ./
+        with:
+          tarantool-version: '${{ steps.latest-version.outputs.abc }}'
+          nightly-build: false
+
+      - uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
+          from-cache: false
+
+  # This test case verifies that a two digit version is installed
+  # without any problem after a three digit version (not a latest
+  # one).
+  #
+  # - install 1.10.12
+  #   - checks: version, non-cached
+  # - uninstall tarantool
+  # - install 1.10
+  #   - checks: version, non-cached
+  test-exact-version-then-two-digit-version:
+    runs-on: ubuntu-latest
+    env:
+      TARANTOOL_CACHE_KEY_SUFFIX: -D-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - id: latest-version
+        uses: ./.github/actions/latest-version
+        with:
+          tarantool-series: '1.10'
+
+      - name: Install 1.10.12 (non-cached)
+        uses: ./
+        with:
+          tarantool-version: '1.10.12'
+          nightly-build: false
+
+      - uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '1.10.12-0'
+          from-cache: false
+
+      - name: Uninstall tarantool
+        run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
+
+      - name: Install 1.10 (non-cached)
+        uses: ./
+        with:
+          tarantool-version: '1.10'
+          nightly-build: false
+
+      - uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
+          from-cache: false
+
+  # This test case verifies that a two digit version is installed
+  # without any problem after a three digit version (the latest
+  # one).
+  #
+  # - install 1.10.LATEST
+  #   - checks: version, non-cached
+  # - uninstall tarantool
+  # - install 1.10
+  #   - checks: version, cached
+  test-exact-version-latest-then-two-digit-version:
+    runs-on: ubuntu-latest
+    env:
+      TARANTOOL_CACHE_KEY_SUFFIX: -E-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - id: latest-version
+        uses: ./.github/actions/latest-version
+        with:
+          tarantool-series: '1.10'
+
+      - name: Install 1.10.LATEST (non-cached)
+        uses: ./
+        with:
+          tarantool-version: '${{ steps.latest-version.outputs.abc }}'
+          nightly-build: false
+
+      - uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
+          from-cache: false
+
+      - name: Uninstall tarantool
+        run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
+
+      - name: Install 1.10 (cached)
+        uses: ./
+        with:
+          tarantool-version: '1.10'
+          nightly-build: false
+
+      - uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
+          from-cache: true
+
+  # This test case performs basic test of four digit version
+  # support (for nightly repositories).
+  #
+  # - install 1.10.LATEST.LATEST (nightly)
+  #   - checks: version, non-cached
+  # - uninstall tarantool
+  # - install 1.10.LATEST (nightly)
+  #   - checks: version, cached
+  # - install 1.10 (nightly)
+  #   - checks: version, cached
+  test-exact-version-nightly:
+    runs-on: ubuntu-latest
+    env:
+      TARANTOOL_CACHE_KEY_SUFFIX: -F-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - id: latest-version
+        uses: ./.github/actions/latest-version
+        with:
+          tarantool-series: '1.10'
+          nightly-build: true
+
+      - name: Install 1.10.LATEST.LATEST (nightly, non-cached)
+        uses: ./
+        with:
+          tarantool-version: '${{ steps.latest-version.outputs.abcd }}'
+          nightly-build: true
+
+      - uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
+          from-cache: false
+
+      - name: Uninstall tarantool
+        run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
+
+      - name: Install 1.10.LATEST (nightly, cached)
+        uses: ./
+        with:
+          tarantool-version: '1.10'
+          nightly-build: true
+
+      - uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
+          from-cache: true
+
+      - name: Install 1.10 (nightly, cached)
+        uses: ./
+        with:
+          tarantool-version: '1.10'
+          nightly-build: true
+
+      - uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
+          from-cache: true
