@@ -42,3 +42,5 @@ The scripts and documentation in this project are released under the [MIT Licens
 # Contributions
 
 Contributions are welcome! Just open an issue or send a pull request.
+
+Check out [HACKING.md](./HACKING.md) file for hints.
