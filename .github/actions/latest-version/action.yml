@@ -1,0 +1,94 @@
+# This action is supposed to be used in setup-tarantool CI.
+#
+# It determines the latest tarantool version available in the
+# repository defined by the input parameters.
+#
+# The output values represent the tarantool version in different
+# forms for convenience.
+#
+# Usage example:
+#
+# - steps:
+#   - id: latest_version
+#     uses: ./.github/actions/latest-version
+#     with:
+#       tarantool-series: '1.10' # don't miss quotes!
+#
+#   - run: echo ${{ steps.latest-version.outputs.package }}
+#   # ---> 1.10.13.0.g1d2c5aad5-1
+#   - run: echo ${{ steps.latest-version.outputs.abc }}
+#   # ---> 1.10.13
+#   - run: echo ${{ steps.latest-version.outputs.abcd }}
+#   # ---> 1.10.13.0
+#   - run: echo ${{ steps.latest-version.outputs.abc-d }}
+#   # ---> 1.10.13-0
+#   - run: echo ${{ steps.latest-version.outputs.git-describe }}
+#   # ---> 1.10.13-0-g1d2c5aad5
+
+name: 'Latest tarantool version'
+description: 'Get latest tarantool version of given release series'
+inputs:
+  tarantool-series:
+    description: 'Tarantool release series'
+    required: true
+  nightly-build:
+    description: 'Whether to look into a repository with nightly builds'
+    required: false
+    default: false
+outputs:
+  package:
+    description: 'Latest tarantool version in the Debian package format'
+    value: ${{ steps.get-latest-version.outputs.package }}
+  abc:
+    description: 'Latest tarantool version in the A.B.C form'
+    value: ${{ steps.get-latest-version.outputs.abc }}
+  abcd:
+    description: 'Latest tarantool version in the A.B.C.D form'
+    value: ${{ steps.get-latest-version.outputs.abcd }}
+  abc-d:
+    description: 'Latest tarantool version in the A.B.C-D form'
+    value: ${{ steps.get-latest-version.outputs.abc-d }}
+  git-describe:
+    description: 'Latest tarantool version in the A.B.C-D-gHHHHHHHHH form'
+    value: ${{ steps.get-latest-version.outputs.git-describe }}
+runs:
+  using: 'composite'
+  steps:
+    - id: get-latest-version
+      run: |
+        node <<'SCRIPT'
+          process.env['INPUT_TARANTOOL-VERSION'] = '${{ inputs.tarantool-series }}'
+          process.env['INPUT_NIGHTLY-BUILD'] = '${{ inputs.nightly-build }}'
+          require('./dist/main').latest_version().then(v => {
+            console.log(`package: ${v}`)
+            console.log(`::set-output name=package::${v}`)
+
+            /*
+             * 1.10.13.0.g1d2c5aad5-1
+             * ->
+             * parts[0]: '1'
+             * parts[1]: '10'
+             * parts[2]: '13'
+             * parts[3]: '0'
+             * parts[4]: 'g1d2c5aad5'
+             * parts[5]: '1'
+             */
+            var parts = v.split(/[.-]/)
+
+            var abc = parts.slice(0, 3).join('.')
+            var abcd = `${abc}.${parts[3]}`
+            var abc_d = `${abc}-${parts[3]}`
+            var git_describe = `${abc_d}-${parts[4]}`
+
+            console.log(`abc: ${abc}`)
+            console.log(`abcd: ${abcd}`)
+            console.log(`abc-d: ${abc_d}`)
+            console.log(`git-describe: ${git_describe}`)
+
+            console.log(`::set-output name=abc::${abc}`)
+            console.log(`::set-output name=abcd::${abcd}`)
+            console.log(`::set-output name=abc-d::${abc_d}`)
+            console.log(`::set-output name=git-describe::${git_describe}`)
+          })
+        SCRIPT
+      shell: bash

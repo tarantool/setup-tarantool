@@ -9,10 +9,12 @@ import * as fs from 'fs'
 
 const nightlyBuild =
   (core.getInput('nightly-build') || 'false').toUpperCase() === 'TRUE'
+const tarantool_version = core.getInput('tarantool-version', {required: true})
+const tarantool_series = tarantool_version.split('.', 2).join('.')
 const baseUrl =
   'https://download.tarantool.org/tarantool/' +
   (nightlyBuild ? '' : 'release/') +
-  core.getInput('tarantool-version', {required: true})
+  tarantool_series
 
 interface CaptureOptions {
   /** optional.  defaults to false */
@@ -76,8 +78,14 @@ function semver_max(a: string, b: string): string {
   }
 }
 
-export async function latest_version(): Promise<string> {
+async function available_versions(
+  version_prefix: string
+): Promise<Array<string>> {
   const repo = baseUrl + '/ubuntu/dists/' + (await lsb_release())
+
+  // Don't return 1.10.10, when the version prefix is 1.10.1.
+  const prefix = version_prefix ? version_prefix + '.' : ''
+
   return http_get(`${repo}/main/binary-amd64/Packages`)
     .then(response => {
       if (response.message.statusCode !== 200) {
@@ -86,17 +94,31 @@ export async function latest_version(): Promise<string> {
       return response.readBody()
     })
     .then(output => {
-      let ret = ''
+      let versions = new Array<string>()
       output
         .split('\n\n')
         .filter(paragraph => paragraph.startsWith('Package: tarantool\n'))
         .forEach(paragraph => {
           const match = paragraph.match(/^Version: (.+)$/m)
-          const version = match ? match[1] : ret
-          ret = semver_max(ret, version)
+          if (match) {
+            let v = match[1]
+            if (!prefix || v.startsWith(prefix)) {
+              versions.push(v)
+            }
+          }
         })
-      return ret
+      return versions
     })
+}
+
+export async function latest_version(version_prefix: string): Promise<string> {
+  return available_versions(version_prefix).then(versions => {
+    let max = ''
+    versions.forEach(v => {
+      max = semver_max(max, v)
+    })
+    return max
+  })
 }
 
 async function run_linux(): Promise<void> {
@@ -104,11 +126,10 @@ async function run_linux(): Promise<void> {
     const distro = await lsb_release()
     const cache_dir = 'cache-tarantool'
 
-    core.startGroup('Checking latest tarantool version')
-    const version = await latest_version()
+    core.startGroup(`Checking latest tarantool ${tarantool_version} version`)
+    const version = await latest_version(tarantool_version)
     core.info(`${version}`)
     core.endGroup()
-
     if (core.getInput('cache-key')) {
       core.warning("Setup-tarantool input 'cache-key' is deprecated")
     }
@@ -148,7 +169,9 @@ async function run_linux(): Promise<void> {
     core.startGroup('Installing tarantool')
 
     const dpkg_before = await dpkg_list()
-    await exec.exec('sudo apt-get install -y tarantool tarantool-dev')
+    await exec.exec(
+      `sudo apt-get install -y tarantool=${version}* tarantool-dev=${version}*`
+    )
     const dpkg_after = await dpkg_list()
 
     const dpkg_diff: Array<string> = Array.from(dpkg_after.values()).filter(

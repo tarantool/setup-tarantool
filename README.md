@@ -24,6 +24,16 @@ steps:
   - run: .rocks/bin/luatest -v
 ```
 
+### Install an exact version
+
+```
+steps:
+  - uses: actions/checkout@v2
+  - uses: tarantool/setup-tarantool@v1
+    with:
+      tarantool-version: '2.6.1'
+```
+
 ### Install a nightly build
 
 ```yaml
@@ -31,7 +41,7 @@ steps:
   - uses: actions/checkout@v2
   - uses: tarantool/setup-tarantool@v1
     with:
-      tarantool-version: '2.6'
+      tarantool-version: '2.6'  # or, say, '2.6.1.0' for exact version
       nightly-build: true
 ```
 
