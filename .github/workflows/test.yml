@@ -301,3 +301,52 @@ jobs:
         with:
           tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
           from-cache: true
+
+  # This test case installs tarantool of series-2 using
+  # one/two/three digit version specifier.
+  #
+  # It performs the following steps and checks.
+  #
+  # - install 2/2.10/2.10.0
+  #   - checks: version, non-cached
+  # - uninstall tarantool
+  # - install 2/2.10/2.10.0
+  #   - checks: version, cached
+  test-series-2:
+    strategy:
+      fail-fast: false
+      matrix:
+        tarantool:
+          - '2'
+          - '2.10'
+          - '2.10.0'
+    runs-on: ubuntu-latest
+    env:
+      # github.run_id is the same across different jobs created
+      # from the same matrix.
+      TARANTOOL_CACHE_KEY_SUFFIX: -G-${{ matrix.tarantool }}-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install ${{ matrix.tarantool }} (non-cached)
+        uses: ./
+        with:
+          tarantool-version: '${{ matrix.tarantool }}'
+
+      - uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '${{ matrix.tarantool }}'
+          from-cache: false
+
+      - name: Uninstall tarantool
+        run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
+
+      - name: Install ${{ matrix.tarantool }} (cached)
+        uses: ./
+        with:
+          tarantool-version: '${{ matrix.tarantool }}'
+
+      - uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '${{ matrix.tarantool }}'
+          from-cache: true
