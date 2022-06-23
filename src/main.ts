@@ -10,11 +10,6 @@ import * as fs from 'fs'
 const nightlyBuild =
   (core.getInput('nightly-build') || 'false').toUpperCase() === 'TRUE'
 const tarantool_version = core.getInput('tarantool-version', {required: true})
-const tarantool_series = tarantool_version.split('.', 2).join('.')
-const baseUrl =
-  'https://download.tarantool.org/tarantool/' +
-  (nightlyBuild ? '' : 'release/') +
-  tarantool_series
 
 interface CaptureOptions {
   /** optional.  defaults to false */
@@ -78,9 +73,52 @@ function semver_max(a: string, b: string): string {
   }
 }
 
+function construct_base_url(): string {
+  const parts = tarantool_version.split('.', 2)
+  const major = Number(parts[0])
+  const minor = Number(parts[1])
+
+  var tarantool_series
+  // Assume that just 2 is latest 2, so it is 2.10+ too.
+  if (
+    major >= 3 ||
+    (major == 2 && minor >= 10) ||
+    (major == 2 && isNaN(minor))
+  ) {
+    /*
+     * 2.10+ -- the new release policy is in effect.
+     *
+     * A release series is determined by a major version.
+     * Nightly builds are not provided.
+     *
+     * https://github.com/tarantool/tarantool/discussions/6182
+     */
+    tarantool_series = `series-${major}`
+    if (nightlyBuild) {
+      throw new Error(`${tarantool_series} does not offer nightly builds`)
+    }
+  } else {
+    /*
+     * 1.10, 2.1, ..., 2.8 -- old release policy is in effect.
+     *
+     * A release series is determined by major and minor
+     * versions. There are release and nightly builds (separate
+     * repositories).
+     */
+    tarantool_series = `${major}.${minor}`
+  }
+
+  return (
+    'https://download.tarantool.org/tarantool/' +
+    (nightlyBuild ? '' : 'release/') +
+    tarantool_series
+  )
+}
+
 async function available_versions(
   version_prefix: string
 ): Promise<Array<string>> {
+  const baseUrl = construct_base_url()
   const repo = baseUrl + '/ubuntu/dists/' + (await lsb_release())
 
   // Don't return 1.10.10, when the version prefix is 1.10.1.
@@ -125,6 +163,7 @@ async function run_linux(): Promise<void> {
   try {
     const distro = await lsb_release()
     const cache_dir = 'cache-tarantool'
+    const baseUrl = construct_base_url()
 
     core.startGroup(`Checking latest tarantool ${tarantool_version} version`)
     const version = await latest_version(tarantool_version)

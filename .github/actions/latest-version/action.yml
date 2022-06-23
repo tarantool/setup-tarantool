@@ -24,6 +24,12 @@
 #   # ---> 1.10.13-0
 #   - run: echo ${{ steps.latest-version.outputs.git-describe }}
 #   # ---> 1.10.13-0-g1d2c5aad5
+#
+# Caution: It works smoothly only for 1.10/2.8, but not for 2.10+
+# due to changes in the package versioning (see the new release
+# policy document, [1]).
+#
+# [1]: https://github.com/tarantool/tarantool/discussions/6182
 
 name: 'Latest tarantool version'
 description: 'Get latest tarantool version of given release series'
