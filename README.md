@@ -26,7 +26,7 @@ steps:
 
 ### Install an exact version
 
-```
+```yaml
 steps:
   - uses: actions/checkout@v2
   - uses: tarantool/setup-tarantool@v1
