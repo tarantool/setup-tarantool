@@ -17,6 +17,7 @@ jobs:
           - '2.7'
           - '2.8'
           - '2.9'
+          - '2.10'
         nightly: [false]
         include:
         - {runs-on: ubuntu-20.04, tarantool: '1.10', nightly: true}
