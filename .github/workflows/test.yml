@@ -20,6 +20,15 @@ jobs:
           - '2.10'
         nightly: [false]
         include:
+        # We have Ubuntu Jammy (22.04) packages only for 2.10 at
+        # the moment of adding this code. There is commit
+        # 1.10.13-9-g2d23c9d9c, but 1.10.14 is not released yet.
+        # And there is some infrastructure problem with Jammy
+        # packages in the live/1.10 repository.
+        #
+        # Anyway, 2.10 is okay to test the action of Jammy runner,
+        # so just use it.
+        - {runs-on: ubuntu-22.04, tarantool: '2.10', nightly: false}
         - {runs-on: ubuntu-20.04, tarantool: '1.10', nightly: true}
         - {runs-on: ubuntu-18.04, tarantool: '1.10', nightly: true}
     runs-on: ${{ matrix.runs-on }}
