@@ -40,6 +40,15 @@ async function lsb_release(): Promise<string> {
   return _lsb_release
 }
 
+let _lsb_release_id: Promise<string>
+async function lsb_release_id(): Promise<string> {
+  if (!_lsb_release_id) {
+    _lsb_release_id = capture('lsb_release -i -s', {silent: true})
+  }
+
+  return _lsb_release_id
+}
+
 let _httpc: httpm.HttpClient
 async function http_get(url: string): Promise<httpm.HttpClientResponse> {
   if (!_httpc) {
@@ -119,7 +128,9 @@ async function available_versions(
   version_prefix: string
 ): Promise<Array<string>> {
   const baseUrl = construct_base_url()
-  const repo = baseUrl + '/ubuntu/dists/' + (await lsb_release())
+  const distro = await lsb_release()
+  const distro_id = (await lsb_release_id()).toLowerCase()
+  const repo = baseUrl + '/' + distro_id + '/dists/' + distro
 
   // Don't return 1.10.10, when the version prefix is 1.10.1.
   const prefix = version_prefix ? version_prefix + '.' : ''
@@ -162,6 +173,7 @@ export async function latest_version(version_prefix: string): Promise<string> {
 async function run_linux(): Promise<void> {
   try {
     const distro = await lsb_release()
+    const distro_id = (await lsb_release_id()).toLowerCase()
     const cache_dir = 'cache-tarantool'
     const baseUrl = construct_base_url()
 
@@ -197,7 +209,7 @@ async function run_linux(): Promise<void> {
 
     await core.group('Setting up repository', async () => {
       await exec.exec('sudo tee /etc/apt/sources.list.d/tarantool.list', [], {
-        input: Buffer.from(`deb ${baseUrl}/ubuntu/ ${distro} main\n`)
+        input: Buffer.from(`deb ${baseUrl}/${distro_id}/ ${distro} main\n`)
       })
     })
 
