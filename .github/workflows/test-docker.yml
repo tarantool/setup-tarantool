@@ -1,0 +1,80 @@
+name: Test in docker
+
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: ['ubuntu-22.04']
+
+    strategy:
+      fail-fast: false
+      matrix:
+        tarantool:
+          - '1.10'
+          - '2.10'
+          - '2.11'
+
+        image:
+          - ubuntu:focal
+          - ubuntu:jammy
+          - debian:buster
+          - debian:bullseye
+
+        # Only 2.11 is available on debian bookworm
+        include:
+          - tarantool: '2.11'
+            image: debian:bookworm
+
+    container:
+      image: ${{ matrix.image }}
+
+    env:
+      TARANTOOL_CACHE_KEY_SUFFIX: -DA-${{ matrix.image }}-${{ github.run_id }}
+      DEBIAN_FRONTEND: noninteractive
+      TZ: Etc/UTC
+
+    steps:
+      - name: Setup system
+        run: |
+          apt-get -y update
+          apt-get -y upgrade
+          apt-get -y install --no-install-recommends --no-install-suggests \
+            tzdata sudo lsb-release gnupg ca-certificates rsync
+
+      - name: Setup nodejs
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.18.0'
+
+      - uses: actions/checkout@v4
+
+      - id: latest-version
+        uses: ./.github/actions/latest-version
+        with:
+          tarantool-series: '${{ matrix.tarantool }}'
+
+      - name: Setup from scratch
+        uses: ./
+        with:
+          tarantool-version: ${{ matrix.tarantool }}
+
+      - name: Check precise version
+        uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
+          from-cache: false
+
+      - name: Uninstall tarantool
+        run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
+
+      - name: Setup from cache
+        uses: ./
+        with:
+          tarantool-version: ${{ matrix.tarantool }}
+
+      - name: Verify install from cache
+        uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
+          from-cache: true

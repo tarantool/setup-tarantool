@@ -16,6 +16,15 @@ interface CaptureOptions {
   silent?: boolean
 }
 
+interface FileInclusion {
+  include: boolean
+  path: RegExp
+}
+
+interface DpkgConfig {
+  includes: FileInclusion[]
+}
+
 async function capture(cmd: string, options?: CaptureOptions): Promise<string> {
   let output = ''
 
@@ -170,6 +179,86 @@ export async function latest_version(version_prefix: string): Promise<string> {
   })
 }
 
+function glob_to_regex(glob: string): RegExp {
+  return new RegExp(
+    glob.replace(/\./g, '\\.').replace(/\*/g, '.*').replace(/\?/g, '.')
+  )
+}
+
+function list_files_in_dir(directory: string, files: string[] = []): string[] {
+  fs.readdirSync(directory).forEach(file => {
+    const p = path.join(directory, file)
+    if (fs.statSync(p).isDirectory()) {
+      return list_files_in_dir(p, files)
+    } else {
+      return files.push(p)
+    }
+  })
+
+  files.sort()
+  return files
+}
+
+function dpkg_read_config(): DpkgConfig {
+  const dpkgConfig: DpkgConfig = {
+    includes: []
+  }
+
+  const dpkgConfigFilepath = '/etc/dpkg/dpkg.cfg'
+  const dpkgConfigDirPath = '/etc/dpkg/dpkg.cfg.d'
+  const excludePattern = 'path-exclude='
+  const includePattern = 'path-include='
+
+  const configs = list_files_in_dir(dpkgConfigDirPath, [dpkgConfigFilepath])
+  configs.forEach(config => {
+    try {
+      const dpkgExcludesFile = fs.readFileSync(config, 'utf8')
+
+      dpkgExcludesFile.split('\n').forEach(line => {
+        // Exclude
+        if (line.startsWith(excludePattern)) {
+          const regex = glob_to_regex(line.substring(excludePattern.length))
+          dpkgConfig.includes.push({
+            include: false,
+            path: regex
+          })
+          return
+        }
+
+        // Include
+        if (line.startsWith(includePattern)) {
+          const regex = glob_to_regex(line.substring(includePattern.length))
+          dpkgConfig.includes.push({
+            include: true,
+            path: regex
+          })
+          return
+        }
+      })
+    } catch (err) {
+      core.info(`dpkg excludes file not available: ${err}`)
+    }
+  })
+
+  return dpkgConfig
+}
+
+function dpkg_is_file_included(
+  dpkgConfig: DpkgConfig,
+  filepath: string
+): boolean {
+  var included = true
+
+  dpkgConfig.includes.forEach(include => {
+    if (include.path.test(filepath)) {
+      included = include.include
+      return
+    }
+  })
+
+  return included
+}
+
 async function run_linux(): Promise<void> {
   try {
     const distro = await lsb_release()
@@ -234,10 +323,20 @@ async function run_linux(): Promise<void> {
     core.info('Caching APT packages: ' + dpkg_diff.join(', '))
 
     for (const pkg of dpkg_diff) {
+      const dpkgConfig = dpkg_read_config()
       const output = await capture(`sudo dpkg -L ${pkg}`, {silent: true})
       const files: Array<string> = output
         .split('\n')
-        .filter(f => fs.statSync(f).isFile())
+        .filter(f => dpkg_is_file_included(dpkgConfig, f))
+        .filter(f => {
+          try {
+            return fs.statSync(f).isFile()
+          } catch (err) {
+            throw new Error(
+              `Error while checking file ${f} from package ${pkg}: ${err}`
+            )
+          }
+        })
       for (const f of files) {
         const dest = path.join(cache_dir, path.dirname(f))
         await io.mkdirP(dest)
