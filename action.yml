@@ -14,5 +14,5 @@ inputs:
     description: Deprecated. Custom key used for APT packages caching
     required: false
 runs:
-  using: 'node12'
+  using: 'node16'
   main: dist/index.js
