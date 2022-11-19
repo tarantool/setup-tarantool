@@ -44,7 +44,7 @@ jobs:
             process.env["INPUT_NIGHTLY-BUILD"] = "${{ matrix.nightly }}"
             require("./dist/main").latest_version().then(v => {
               console.log(v)
-              console.log(`::set-output name=version::${v}`)
+              require("./dist/main").setActionOutput('version', v);
             })
           SCRIPT
 

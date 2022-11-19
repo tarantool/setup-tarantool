@@ -262,3 +262,8 @@ export async function run(): Promise<void> {
 
   await exec.exec('tarantool --version')
 }
+
+// Export core.setOutput() to use in testing of setup-tarantool.
+export function setActionOutput(name: string, value: any): void {
+  core.setOutput(name, value)
+}
