@@ -16,7 +16,7 @@ This action will set up [Tarantool](https://www.tarantool.io) environment and **
 ```yaml
 steps:
   - uses: actions/checkout@v3
-  - uses: tarantool/setup-tarantool@v1
+  - uses: tarantool/setup-tarantool@v2
     with:
       tarantool-version: '2.10'
   - run: tarantoolctl rocks install luatest
@@ -29,7 +29,7 @@ steps:
 ```yaml
 steps:
   - uses: actions/checkout@v3
-  - uses: tarantool/setup-tarantool@v1
+  - uses: tarantool/setup-tarantool@v2
     with:
       tarantool-version: '2.10.4'
 ```
@@ -41,7 +41,7 @@ steps:
 ```yaml
 steps:
   - uses: actions/checkout@v3
-  - uses: tarantool/setup-tarantool@v1
+  - uses: tarantool/setup-tarantool@v2
     with:
       tarantool-version: '2.6'  # or, say, '2.6.1.0' for exact version
       nightly-build: true
