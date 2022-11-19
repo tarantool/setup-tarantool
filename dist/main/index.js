@@ -62324,7 +62324,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.run = exports.latest_version = void 0;
+exports.setActionOutput = exports.run = exports.latest_version = void 0;
 const httpm = __importStar(__nccwpck_require__(6255));
 const cache = __importStar(__nccwpck_require__(7799));
 const core = __importStar(__nccwpck_require__(2186));
@@ -62551,6 +62551,11 @@ async function run() {
     await exec.exec('tarantool --version');
 }
 exports.run = run;
+// Export core.setOutput() to use in testing of setup-tarantool.
+function setActionOutput(name, value) {
+    core.setOutput(name, value);
+}
+exports.setActionOutput = setActionOutput;
 
 
 /***/ }),
