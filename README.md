@@ -18,7 +18,7 @@ steps:
   - uses: actions/checkout@v3
   - uses: tarantool/setup-tarantool@v1
     with:
-      tarantool-version: '2.6'
+      tarantool-version: '2.10'
   - run: tarantoolctl rocks install luatest
   - run: tarantoolctl rocks make
   - run: .rocks/bin/luatest -v
@@ -31,10 +31,12 @@ steps:
   - uses: actions/checkout@v3
   - uses: tarantool/setup-tarantool@v1
     with:
-      tarantool-version: '2.6.1'
+      tarantool-version: '2.10.4'
 ```
 
 ### Install a nightly build
+
+*Important:* nightly builds are not available for 2.10.0 and newer.
 
 ```yaml
 steps:
