@@ -67,7 +67,7 @@ runs:
           process.env['INPUT_NIGHTLY-BUILD'] = '${{ inputs.nightly-build }}'
           require('./dist/main').latest_version().then(v => {
             console.log(`package: ${v}`)
-            console.log(`::set-output name=package::${v}`)
+            require('./dist/main').setActionOutput('package', v);
 
             /*
              * 1.10.13.0.g1d2c5aad5-1
@@ -91,10 +91,10 @@ runs:
             console.log(`abc-d: ${abc_d}`)
             console.log(`git-describe: ${git_describe}`)
 
-            console.log(`::set-output name=abc::${abc}`)
-            console.log(`::set-output name=abcd::${abcd}`)
-            console.log(`::set-output name=abc-d::${abc_d}`)
-            console.log(`::set-output name=git-describe::${git_describe}`)
+            require('./dist/main').setActionOutput('abc', abc);
+            require('./dist/main').setActionOutput('abcd', abcd);
+            require('./dist/main').setActionOutput('abc-d', abc_d);
+            require('./dist/main').setActionOutput('git-describe', git_describe);
           })
         SCRIPT
       shell: bash
