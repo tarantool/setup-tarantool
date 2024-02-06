@@ -34,7 +34,7 @@ jobs:
     env:
       TARANTOOL_CACHE_KEY_SUFFIX: -A-${{ github.run_id }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - id: get-latest
         run: |
@@ -94,7 +94,7 @@ jobs:
     env:
       TARANTOOL_CACHE_KEY_SUFFIX: -B-${{ github.run_id }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Tarantool
         uses: ./
         with:
@@ -117,7 +117,7 @@ jobs:
     env:
       TARANTOOL_CACHE_KEY_SUFFIX: -C-${{ github.run_id }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - id: latest-version
         uses: ./.github/actions/latest-version
@@ -174,7 +174,7 @@ jobs:
     env:
       TARANTOOL_CACHE_KEY_SUFFIX: -D-${{ github.run_id }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - id: latest-version
         uses: ./.github/actions/latest-version
@@ -220,7 +220,7 @@ jobs:
     env:
       TARANTOOL_CACHE_KEY_SUFFIX: -E-${{ github.run_id }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - id: latest-version
         uses: ./.github/actions/latest-version
@@ -267,7 +267,7 @@ jobs:
     env:
       TARANTOOL_CACHE_KEY_SUFFIX: -F-${{ github.run_id }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - id: latest-version
         uses: ./.github/actions/latest-version
@@ -335,7 +335,7 @@ jobs:
       # from the same matrix.
       TARANTOOL_CACHE_KEY_SUFFIX: -G-${{ matrix.tarantool }}-${{ github.run_id }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install ${{ matrix.tarantool }} (non-cached)
         uses: ./

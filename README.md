@@ -15,7 +15,7 @@ This action will set up [Tarantool](https://www.tarantool.io) environment and **
 
 ```yaml
 steps:
-  - uses: actions/checkout@v3
+  - uses: actions/checkout@v4
   - uses: tarantool/setup-tarantool@v2
     with:
       tarantool-version: '2.10'
@@ -28,7 +28,7 @@ steps:
 
 ```yaml
 steps:
-  - uses: actions/checkout@v3
+  - uses: actions/checkout@v4
   - uses: tarantool/setup-tarantool@v2
     with:
       tarantool-version: '2.10.4'
@@ -40,7 +40,7 @@ steps:
 
 ```yaml
 steps:
-  - uses: actions/checkout@v3
+  - uses: actions/checkout@v4
   - uses: tarantool/setup-tarantool@v2
     with:
       tarantool-version: '2.6'  # or, say, '2.6.1.0' for exact version
