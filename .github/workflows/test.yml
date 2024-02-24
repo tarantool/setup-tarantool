@@ -106,10 +106,10 @@ jobs:
   #
   # It performs the following steps and checks.
   #
-  # - install 1.10.12
+  # - install 1.10.14
   #   - checks: version, non-cached
   # - uninstall tarantool
-  # - install 1.10.12
+  # - install 1.10.14
   #   - checks: version, cached
   # - install 1.10.LATEST
   #   - checks: version, non-cached
@@ -125,29 +125,29 @@ jobs:
         with:
           tarantool-series: '1.10'
 
-      - name: Install 1.10.12 (non-cached)
+      - name: Install 1.10.14 (non-cached)
         uses: ./
         with:
-          tarantool-version: '1.10.12'
+          tarantool-version: '1.10.14'
           nightly-build: false
 
       - uses: ./.github/actions/verify-version
         with:
-          tarantool-version: '1.10.12-0'
+          tarantool-version: '1.10.14-0'
           from-cache: false
 
       - name: Uninstall tarantool
         run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
 
-      - name: Install 1.10.12 (cached)
+      - name: Install 1.10.14 (cached)
         uses: ./
         with:
-          tarantool-version: '1.10.12'
+          tarantool-version: '1.10.14'
           nightly-build: false
 
       - uses: ./.github/actions/verify-version
         with:
-          tarantool-version: '1.10.12-0'
+          tarantool-version: '1.10.14-0'
           from-cache: true
 
       - name: Install 1.10.LATEST (non-cached)
@@ -165,7 +165,7 @@ jobs:
   # without any problem after a three digit version (not a latest
   # one).
   #
-  # - install 1.10.12
+  # - install 1.10.14
   #   - checks: version, non-cached
   # - uninstall tarantool
   # - install 1.10
@@ -182,15 +182,15 @@ jobs:
         with:
           tarantool-series: '1.10'
 
-      - name: Install 1.10.12 (non-cached)
+      - name: Install 1.10.14 (non-cached)
         uses: ./
         with:
-          tarantool-version: '1.10.12'
+          tarantool-version: '1.10.14'
           nightly-build: false
 
       - uses: ./.github/actions/verify-version
         with:
-          tarantool-version: '1.10.12-0'
+          tarantool-version: '1.10.14-0'
           from-cache: false
 
       - name: Uninstall tarantool
