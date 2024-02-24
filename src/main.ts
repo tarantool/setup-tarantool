@@ -169,7 +169,9 @@ async function available_versions(
     })
 }
 
-export async function latest_version(version_prefix: string): Promise<string> {
+export async function latest_version(
+  version_prefix: string = tarantool_version
+): Promise<string> {
   return available_versions(version_prefix).then(versions => {
     let max = ''
     versions.forEach(v => {

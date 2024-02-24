@@ -62461,7 +62461,7 @@ async function available_versions(version_prefix) {
         return versions;
     });
 }
-async function latest_version(version_prefix) {
+async function latest_version(version_prefix = tarantool_version) {
     return available_versions(version_prefix).then(versions => {
         let max = '';
         versions.forEach(v => {
