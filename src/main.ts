@@ -240,6 +240,12 @@ function dpkg_read_config(): DpkgConfig {
     }
   })
 
+  // https://groups.google.com/g/linux.debian.bugs.dist/c/w5HiAxl7e7Y
+  dpkgConfig.includes.push({
+    include: false,
+    path: glob_to_regex('/usr/share/man/man3/LIST_*.3')
+  })
+
   return dpkgConfig
 }
 

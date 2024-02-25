@@ -62524,6 +62524,11 @@ function dpkg_read_config() {
             core.info(`dpkg excludes file not available: ${err}`);
         }
     });
+    // https://groups.google.com/g/linux.debian.bugs.dist/c/w5HiAxl7e7Y
+    dpkgConfig.includes.push({
+        include: false,
+        path: glob_to_regex('/usr/share/man/man3/LIST_*.3')
+    });
     return dpkgConfig;
 }
 function dpkg_is_file_included(dpkgConfig, filepath) {
