@@ -6,8 +6,10 @@ This action will set up [Tarantool](https://www.tarantool.io) environment and **
 
 - When cached, it takes \~1-2s to finish.
 - The first run takes \~40s.
-- Cache size is \~20MB.
-- Runs on GitHub-hosted `ubuntu-*` runners only.
+- Cache size is 20MB-30MB.
+- Runs on GitHub-hosted `ubuntu-*` runners.
+- Runs on Debian/Ubuntu self-hosted runners.
+- Runs inside Debian/Ubuntu container jobs.
 
 # Usage
 
@@ -45,6 +47,51 @@ steps:
     with:
       tarantool-version: '2.6'  # or, say, '2.6.1.0' for exact version
       nightly-build: true
+```
+
+### Self-hosted runners and container jobs
+
+It requires an additional step to bring dependencies needed for the action
+itself. These dependencies are preinstalled on GitHub hosted runners, but a
+self-hosted runner and a docker image may miss them.
+
+Configuring `apt-get` to skip recommended and suggested packages reduces the
+cache size from \~200MiB to \~30MiB.
+
+```yaml
+jobs:
+  myjob:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:bookworm
+
+    env:
+      DEBIAN_FRONTEND: noninteractive
+
+    steps:
+      - name: Configure apt-get
+        run: |
+          mkdir -p /etc/apt/apt.conf.d
+          printf '%s\n%s\n'                    \
+            'APT::Install-Recommends "false";' \
+            'APT::Install-Suggests "false";'   \
+            > /etc/apt/apt.conf.d/no-recommends-no-suggests.conf
+
+      - name: Update repositories metadata
+        run: |
+          apt-get -y update
+
+      - name: Workaround interactive tzdata configuration problem (gh-50)
+        run:
+          apt-get -y install tzdata
+
+      - name: Install setup-tarantool dependencies
+        run: |
+          apt-get -y install sudo lsb-release gnupg ca-certificates rsync
+
+      - uses: tarantool/setup-tarantool@ab69f5679e6ea7e5872d9e0901f681587fd29be6
+        with:
+          tarantool-version: '2.11'
 ```
 
 # License
