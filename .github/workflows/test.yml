@@ -359,3 +359,23 @@ jobs:
         with:
           tarantool-version: '${{ matrix.tarantool }}'
           from-cache: true
+
+  # There is no 1.10.999 build. Verify that an attempt to install
+  # it fails.
+  test-unknown-version:
+    runs-on: ubuntu-latest
+    env:
+      TARANTOOL_CACHE_KEY_SUFFIX: -H-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Attempt to install 1.10.999 (expect failure)
+        uses: ./
+        with:
+          tarantool-version: '1.10.999'
+        continue-on-error: true
+        id: install
+
+      - name: Verify that the previous step fails
+        run: |
+          [ "${{ steps.install.outcome }}" = "failure" ]
