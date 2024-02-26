@@ -32,20 +32,39 @@ jobs:
     env:
       TARANTOOL_CACHE_KEY_SUFFIX: -DA-${{ matrix.image }}-${{ github.run_id }}
       DEBIAN_FRONTEND: noninteractive
-      TZ: Etc/UTC
 
     steps:
-      - name: Setup system
+      - name: Configure apt-get
+        run: |
+          mkdir -p /etc/apt/apt.conf.d
+          printf '%s\n%s\n'                    \
+            'APT::Install-Recommends "false";' \
+            'APT::Install-Suggests "false";'   \
+            > /etc/apt/apt.conf.d/no-recommends-no-suggests.conf
+
+      - name: Update repositories metadata
         run: |
           apt-get -y update
-          apt-get -y upgrade
-          apt-get -y install --no-install-recommends --no-install-suggests \
-            tzdata sudo lsb-release gnupg ca-certificates rsync
 
-      - name: Setup nodejs
-        uses: actions/setup-node@v3
+      - name: Workaround interactive tzdata configuration problem (gh-50)
+        run:
+          apt-get -y install tzdata
+
+      - name: Install setup-tarantool dependencies
+        run: |
+          apt-get -y install sudo lsb-release gnupg ca-certificates rsync
+
+      # Bring `node` executable file into PATH for latest-version
+      # and verify-versions actions.
+      #
+      # It is not needed for a usual usage of the setup-tarantool
+      # action within a container job, because GitHub Action
+      # runner mounts a volume with a `node` executable into the
+      # container.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '18.18.0'
+          node-version: 20
 
       - uses: actions/checkout@v4
 
