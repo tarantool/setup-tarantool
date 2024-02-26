@@ -276,6 +276,12 @@ async function run_linux(): Promise<void> {
 
     core.startGroup(`Checking latest tarantool ${tarantool_version} version`)
     const version = await latest_version(tarantool_version)
+    if (version == '') {
+      throw new Error(
+        `There is no tarantool ${tarantool_version} for ` +
+          `${distro_id} ${distro}`
+      )
+    }
     core.info(`${version}`)
     core.endGroup()
     if (core.getInput('cache-key')) {
