@@ -62542,106 +62542,105 @@ function dpkg_is_file_included(dpkgConfig, filepath) {
     return included;
 }
 async function run_linux() {
-    try {
-        const distro = await lsb_release();
-        const distro_id = (await lsb_release_id()).toLowerCase();
-        const cache_dir = 'cache-tarantool';
-        const baseUrl = construct_base_url();
-        core.startGroup(`Checking latest tarantool ${tarantool_version} version`);
-        const version = await latest_version(tarantool_version);
-        if (version == '') {
-            throw new Error(`There is no tarantool ${tarantool_version} for ` +
-                `${distro_id} ${distro}`);
-        }
-        core.info(`${version}`);
-        core.endGroup();
-        if (core.getInput('cache-key')) {
-            core.warning("Setup-tarantool input 'cache-key' is deprecated");
-        }
-        let cache_key = `tarantool-setup-${distro}-${version}`;
-        // This for testing only
-        cache_key += process.env['TARANTOOL_CACHE_KEY_SUFFIX'] || '';
-        if (await cache.restoreCache([cache_dir], cache_key)) {
-            core.info(`Cache restored from key: ${cache_key}`);
-            await exec.exec(`sudo rsync -aK "${cache_dir}/" /`);
-            await io.rmRF(cache_dir);
-            return;
-        }
-        else {
-            core.info(`Cache not found for input key: ${cache_key}`);
-        }
-        await core.group('Adding gpg key', async () => {
-            const response = await http_get(baseUrl + '/gpgkey');
-            if (response.message.statusCode !== 200) {
-                throw new Error(`server replied ${response.message.statusCode}`);
-            }
-            const gpgkey = Buffer.from(await response.readBody());
-            await exec.exec('sudo apt-key add - ', [], { input: gpgkey });
-        });
-        await core.group('Setting up repository', async () => {
-            await exec.exec('sudo tee /etc/apt/sources.list.d/tarantool.list', [], {
-                input: Buffer.from(`deb ${baseUrl}/${distro_id}/ ${distro} main\n`)
-            });
-        });
-        await core.group('Running apt-get update', async () => {
-            await exec.exec('sudo apt-get update');
-        });
-        core.startGroup('Installing tarantool');
-        const dpkg_before = await dpkg_list();
-        await exec.exec(`sudo apt-get install -y tarantool=${version}* tarantool-dev=${version}*`);
-        const dpkg_after = await dpkg_list();
-        const dpkg_diff = Array.from(dpkg_after.values()).filter(pkg => !dpkg_before.has(pkg));
-        core.endGroup();
-        core.info('Caching APT packages: ' + dpkg_diff.join(', '));
-        for (const pkg of dpkg_diff) {
-            const dpkgConfig = dpkg_read_config();
-            const output = await capture(`sudo dpkg -L ${pkg}`, { silent: true });
-            const files = output
-                .split('\n')
-                .filter(f => dpkg_is_file_included(dpkgConfig, f))
-                .filter(f => {
-                try {
-                    return fs.statSync(f).isFile();
-                }
-                catch (err) {
-                    throw new Error(`Error while checking file ${f} from package ${pkg}: ${err}`);
-                }
-            });
-            for (const f of files) {
-                const dest = path.join(cache_dir, path.dirname(f));
-                await io.mkdirP(dest);
-                await io.cp(f, dest);
-            }
-        }
-        try {
-            await cache.saveCache([cache_dir], cache_key);
-            core.info(`Cache saved with key: ${cache_key}`);
-        }
-        catch (error) {
-            if (error instanceof Error) {
-                core.warning(error.message);
-            }
-            core.warning(`Saving cache failed, but it's not crucial`);
-        }
+    const distro = await lsb_release();
+    const distro_id = (await lsb_release_id()).toLowerCase();
+    const cache_dir = 'cache-tarantool';
+    const baseUrl = construct_base_url();
+    core.startGroup(`Checking latest tarantool ${tarantool_version} version`);
+    const version = await latest_version(tarantool_version);
+    if (version == '') {
+        throw new Error(`There is no tarantool ${tarantool_version} for ` +
+            `${distro_id} ${distro}`);
+    }
+    core.info(`${version}`);
+    core.endGroup();
+    if (core.getInput('cache-key')) {
+        core.warning("Setup-tarantool input 'cache-key' is deprecated");
+    }
+    let cache_key = `tarantool-setup-${distro}-${version}`;
+    // This for testing only
+    cache_key += process.env['TARANTOOL_CACHE_KEY_SUFFIX'] || '';
+    if (await cache.restoreCache([cache_dir], cache_key)) {
+        core.info(`Cache restored from key: ${cache_key}`);
+        await exec.exec(`sudo rsync -aK "${cache_dir}/" /`);
         await io.rmRF(cache_dir);
+        return;
+    }
+    else {
+        core.info(`Cache not found for input key: ${cache_key}`);
+    }
+    await core.group('Adding gpg key', async () => {
+        const response = await http_get(baseUrl + '/gpgkey');
+        if (response.message.statusCode !== 200) {
+            throw new Error(`server replied ${response.message.statusCode}`);
+        }
+        const gpgkey = Buffer.from(await response.readBody());
+        await exec.exec('sudo apt-key add - ', [], { input: gpgkey });
+    });
+    await core.group('Setting up repository', async () => {
+        await exec.exec('sudo tee /etc/apt/sources.list.d/tarantool.list', [], {
+            input: Buffer.from(`deb ${baseUrl}/${distro_id}/ ${distro} main\n`)
+        });
+    });
+    await core.group('Running apt-get update', async () => {
+        await exec.exec('sudo apt-get update');
+    });
+    core.startGroup('Installing tarantool');
+    const dpkg_before = await dpkg_list();
+    await exec.exec(`sudo apt-get install -y tarantool=${version}* tarantool-dev=${version}*`);
+    const dpkg_after = await dpkg_list();
+    const dpkg_diff = Array.from(dpkg_after.values()).filter(pkg => !dpkg_before.has(pkg));
+    core.endGroup();
+    core.info('Caching APT packages: ' + dpkg_diff.join(', '));
+    for (const pkg of dpkg_diff) {
+        const dpkgConfig = dpkg_read_config();
+        const output = await capture(`sudo dpkg -L ${pkg}`, { silent: true });
+        const files = output
+            .split('\n')
+            .filter(f => dpkg_is_file_included(dpkgConfig, f))
+            .filter(f => {
+            try {
+                return fs.statSync(f).isFile();
+            }
+            catch (err) {
+                throw new Error(`Error while checking file ${f} from package ${pkg}: ${err}`);
+            }
+        });
+        for (const f of files) {
+            const dest = path.join(cache_dir, path.dirname(f));
+            await io.mkdirP(dest);
+            await io.cp(f, dest);
+        }
+    }
+    try {
+        await cache.saveCache([cache_dir], cache_key);
+        core.info(`Cache saved with key: ${cache_key}`);
     }
     catch (error) {
+        if (error instanceof Error) {
+            core.warning(error.message);
+        }
+        core.warning(`Saving cache failed, but it's not crucial`);
+    }
+    await io.rmRF(cache_dir);
+}
+async function run() {
+    if (process.platform !== 'linux') {
+        core.setFailed(`Action doesn't support ${process.platform} platform`);
+        return;
+    }
+    await run_linux()
+        .then(_ => {
+        return exec.exec('tarantool --version');
+    })
+        .catch(error => {
         if (error instanceof Error) {
             core.setFailed(error.message);
         }
         else {
             core.setFailed(`No error message`);
         }
-    }
-}
-async function run() {
-    if (process.platform === 'linux') {
-        await run_linux();
-    }
-    else {
-        core.setFailed(`Action doesn't support ${process.platform} platform`);
-    }
-    await exec.exec('tarantool --version');
+    });
 }
 exports.run = run;
 // Export core.setOutput() to use in testing of setup-tarantool.
