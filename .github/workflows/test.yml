@@ -36,16 +36,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - id: get-latest
-        run: |
-          node <<'SCRIPT'
-            process.env["INPUT_TARANTOOL-VERSION"] = "${{ matrix.tarantool }}"
-            process.env["INPUT_NIGHTLY-BUILD"] = "${{ matrix.nightly }}"
-            require("./dist/main").latest_version().then(v => {
-              console.log(v)
-              require("./dist/main").setActionOutput('version', v);
-            })
-          SCRIPT
+      - id: latest-version
+        uses: ./.github/actions/latest-version
+        with:
+          tarantool-series: ${{ matrix.tarantool }}
+          nightly-build: ${{ matrix.nightly }}
 
       - name: Setup from scratch
         uses: ./
@@ -53,10 +48,10 @@ jobs:
           tarantool-version: ${{ matrix.tarantool }}
           nightly-build: ${{ matrix.nightly }}
 
-      - name: Check precise version
-        run: |
-          dpkg -s tarantool | grep '^Version: ${{ steps.get-latest.outputs.version }}'
-          # It'll also fail if tarantool is installed from cache but not from apt-get
+      - uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
+          from-cache: false
 
       - name: Uninstall tarantool
         run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
@@ -67,23 +62,10 @@ jobs:
           tarantool-version: ${{ matrix.tarantool }}
           nightly-build: ${{ matrix.nightly }}
 
-      - name: Verify install from cache
-        run: |
-          # Fail if tarantool is installed from apt-get
-          if dpkg -s tarantool; then
-            echo "Tarantool wasn't restored from cache"
-            exit 1
-          fi
-
-      - name: Check branch version
-        run: |
-          T=$(tarantool -e 'print(_TARANTOOL:match("%d+%.%d+")); os.exit()')
-          if [ "$T" != "${{ matrix.tarantool }}" ]; then
-            echo "Tarantool version is $T, expected ${{ matrix.tarantool }}"
-            exit 1
-          else
-            echo "Tarantool version is $T, as expected"
-          fi
+      - uses: ./.github/actions/verify-version
+        with:
+          tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
+          from-cache: true
 
   test-concurrency:
     strategy:
