@@ -364,3 +364,32 @@ jobs:
       - name: Verify that the previous step fails
         run: |
           [ "${{ steps.install.outcome }}" = "failure" ]
+
+  test-rocks:
+    # Ubuntu Jammy (22.04) has tarantool-2.6.0 in its repository.
+    # The test verifies that tarantool-common-2.6.0 is not pulled
+    # as a dependency, so this particular Ubuntu version is
+    # acquired explicitly.
+    runs-on: ubuntu-22.04
+    env:
+      TARANTOOL_CACHE_KEY_SUFFIX: -I-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Verify non-cached installation. The cached one has exactly
+      # same luarocks, no need to verify it.
+      - name: Install 1.10
+        uses: ./
+        with:
+          tarantool-version: '1.10'
+
+      # If luarocks 3 is installed instead of luarocks 2, this
+      # command fails with the following error message.
+      #
+      # > module 'luarocks.core.cfg' not found
+      #
+      # See https://github.com/tarantool/tarantool/issues/5429 for
+      # details.
+      - name: Verify tarantoolctl rocks
+        run: |
+          tarantoolctl rocks list
