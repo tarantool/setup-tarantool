@@ -62617,7 +62617,15 @@ async function run_linux() {
     });
     core.startGroup('Installing tarantool');
     const dpkg_before = await dpkg_list();
-    await exec.exec(`sudo apt-get install -y tarantool=${version}* tarantool-dev=${version}*`);
+    /*
+     * The series-3 repository doesn't offer the tarantool-common
+     * package.
+     */
+    let pkgs = [`tarantool=${version}*`, `tarantool-dev=${version}*`];
+    if (tarantool_version_major() < 3) {
+        pkgs.push(`tarantool-common=${version}*`);
+    }
+    await exec.exec('sudo apt-get install -y ' + pkgs.join(' '));
     const dpkg_after = await dpkg_list();
     const dpkg_diff = Array.from(dpkg_after.values()).filter(pkg => !dpkg_before.has(pkg));
     core.endGroup();
