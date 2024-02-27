@@ -293,17 +293,17 @@ jobs:
           tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
           from-cache: true
 
-  # This test case installs tarantool of series-2 using
-  # one/two/three digit version specifier.
+  # This test case installs tarantool of series-2 and series-3
+  # using one/two/three digit version specifier.
   #
   # It performs the following steps and checks.
   #
-  # - install 2/2.10/2.10.0
+  # - install tarantool
   #   - checks: version, non-cached
   # - uninstall tarantool
-  # - install 2/2.10/2.10.0
+  # - install tarantool
   #   - checks: version, cached
-  test-series-2:
+  test-series-2-and-3:
     strategy:
       fail-fast: false
       matrix:
@@ -311,6 +311,9 @@ jobs:
           - '2'
           - '2.10'
           - '2.10.0'
+          - '3'
+          - '3.0'
+          - '3.0.0'
     runs-on: ubuntu-latest
     env:
       # github.run_id is the same across different jobs created

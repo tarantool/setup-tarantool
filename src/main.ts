@@ -40,10 +40,24 @@ async function capture(cmd: string, options?: CaptureOptions): Promise<string> {
   return output.trim()
 }
 
+function tarantool_version_major(): number {
+  const parts = tarantool_version.split('.', 2)
+  return Number(parts[0])
+}
+
+function tarantool_version_minor(): number {
+  const parts = tarantool_version.split('.', 2)
+  return Number(parts[1])
+}
+
 let _lsb_release: Promise<string>
 async function lsb_release(): Promise<string> {
   if (!_lsb_release) {
-    _lsb_release = capture('lsb_release -c -s', {silent: true})
+    if (tarantool_version_major() >= 3) {
+      _lsb_release = Promise.resolve('static')
+    } else {
+      _lsb_release = capture('lsb_release -c -s', {silent: true})
+    }
   }
 
   return _lsb_release
@@ -52,7 +66,11 @@ async function lsb_release(): Promise<string> {
 let _lsb_release_id: Promise<string>
 async function lsb_release_id(): Promise<string> {
   if (!_lsb_release_id) {
-    _lsb_release_id = capture('lsb_release -i -s', {silent: true})
+    if (tarantool_version_major() >= 3) {
+      _lsb_release_id = Promise.resolve('linux-deb')
+    } else {
+      _lsb_release_id = capture('lsb_release -i -s', {silent: true})
+    }
   }
 
   return _lsb_release_id
@@ -92,9 +110,8 @@ function semver_max(a: string, b: string): string {
 }
 
 function construct_base_url(): string {
-  const parts = tarantool_version.split('.', 2)
-  const major = Number(parts[0])
-  const minor = Number(parts[1])
+  const major = tarantool_version_major()
+  const minor = tarantool_version_minor()
 
   var tarantool_series
   // Assume that just 2 is latest 2, so it is 2.10+ too.
@@ -141,9 +158,6 @@ async function available_versions(
   const distro_id = (await lsb_release_id()).toLowerCase()
   const repo = baseUrl + '/' + distro_id + '/dists/' + distro
 
-  // Don't return 1.10.10, when the version prefix is 1.10.1.
-  const prefix = version_prefix ? version_prefix + '.' : ''
-
   return http_get(`${repo}/main/binary-amd64/Packages`)
     .then(response => {
       if (response.message.statusCode !== 200) {
@@ -155,12 +169,29 @@ async function available_versions(
       let versions = new Array<string>()
       output
         .split('\n\n')
-        .filter(paragraph => paragraph.startsWith('Package: tarantool\n'))
+        .filter(paragraph => paragraph.match(/^Package: tarantool$/m))
         .forEach(paragraph => {
           const match = paragraph.match(/^Version: (.+)$/m)
           if (match) {
             let v = match[1]
-            if (!prefix || v.startsWith(prefix)) {
+            /*
+             * Add a full stop or a hyphen into the end of the
+             * prefix to, say, don't return 1.10.10, when the
+             * version prefix is 1.10.1.
+             *
+             * The version format varies for series-2 and
+             * series-3. Examples:
+             *
+             * series-2: 2.11.2.g1bac2d257b-1
+             * series-3: 3.0.1-1
+             *
+             * So, we need to add a period and a hyphen both.
+             */
+            if (
+              !version_prefix ||
+              v.startsWith(version_prefix + '.') ||
+              v.startsWith(version_prefix + '-')
+            ) {
               versions.push(v)
             }
           }
