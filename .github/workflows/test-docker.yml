@@ -14,6 +14,7 @@ jobs:
           - '1.10'
           - '2.10'
           - '2.11'
+          - '3.0'
 
         image:
           - ubuntu:focal
@@ -21,9 +22,14 @@ jobs:
           - debian:buster
           - debian:bullseye
 
-        # Only 2.11 is available on debian bookworm
         include:
+          # Only 2.11 is available on Debian Bookworm.
           - tarantool: '2.11'
+            image: debian:bookworm
+
+          # 3.0 is delivered as a single package for all the
+          # distributions.
+          - tarantool: '3.0'
             image: debian:bookworm
 
     container:
@@ -81,7 +87,7 @@ jobs:
       - name: Check precise version
         uses: ./.github/actions/verify-version
         with:
-          tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
+          tarantool-version: '${{ steps.latest-version.outputs.abc-d }}'
           from-cache: false
 
       - name: Uninstall tarantool
@@ -95,5 +101,5 @@ jobs:
       - name: Verify install from cache
         uses: ./.github/actions/verify-version
         with:
-          tarantool-version: '${{ steps.latest-version.outputs.git-describe }}'
+          tarantool-version: '${{ steps.latest-version.outputs.abc-d }}'
           from-cache: true
