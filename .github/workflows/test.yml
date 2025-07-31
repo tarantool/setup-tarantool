@@ -296,6 +296,8 @@ jobs:
   # This test case installs tarantool of series-2 and series-3
   # using one/two/three digit version specifier.
   #
+  # Runs on amd64 and arm64 architecture.
+  #
   # It performs the following steps and checks.
   #
   # - install tarantool
@@ -314,7 +316,8 @@ jobs:
           - '3'
           - '3.0'
           - '3.0.0'
-    runs-on: ubuntu-latest
+        runs-on: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runs-on }}
     env:
       # github.run_id is the same across different jobs created
       # from the same matrix.
