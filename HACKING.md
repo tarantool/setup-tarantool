@@ -16,3 +16,12 @@ Edit the source and regenerate the `index.js` file.
 $ vim src/main.ts
 $ npm run pre-checkin
 ```
+
+## Update dependencies
+
+```shell
+$ npx npm-check-updates -u
+$ npm install
+$ npm update
+$ npm run pre-checkin
+```
