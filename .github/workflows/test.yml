@@ -78,7 +78,7 @@ jobs:
       - name: Setup Tarantool
         uses: ./
         with:
-          tarantool-version: '1.10'
+          tarantool-version: '2.11'
 
   # This test case performs basic test of the three digit version
   # support.
