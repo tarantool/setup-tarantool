@@ -48,6 +48,8 @@ outputs:
   abc-d:
     description: 'Latest tarantool version in the A.B.C-D form'
     value: ${{ steps.get-latest-version.outputs.abc-d }}
+  # Tarantool 3.x has no git commit id in the package version, so
+  # the git-describe output have no sense for 3.x.
   git-describe:
     description: 'Latest tarantool version in the A.B.C-D-gHHHHHHHHH form'
     value: ${{ steps.get-latest-version.outputs.git-describe }}
