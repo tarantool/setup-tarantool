@@ -93,7 +93,7 @@ jobs:
   # - install 1.10.LATEST
   #   - checks: version, non-cached
   test-exact-version-basic:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       TARANTOOL_CACHE_KEY_SUFFIX: -C-${{ github.run_id }}
     steps:
@@ -150,7 +150,7 @@ jobs:
   # - install 1.10
   #   - checks: version, non-cached
   test-exact-version-then-two-digit-version:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       TARANTOOL_CACHE_KEY_SUFFIX: -D-${{ github.run_id }}
     steps:
@@ -196,7 +196,7 @@ jobs:
   # - install 1.10
   #   - checks: version, cached
   test-exact-version-latest-then-two-digit-version:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       TARANTOOL_CACHE_KEY_SUFFIX: -E-${{ github.run_id }}
     steps:
@@ -243,7 +243,7 @@ jobs:
   # - install 1.10 (nightly)
   #   - checks: version, cached
   test-exact-version-nightly:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       TARANTOOL_CACHE_KEY_SUFFIX: -F-${{ github.run_id }}
     steps:
