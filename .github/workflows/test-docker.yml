@@ -19,7 +19,6 @@ jobs:
         image:
           - ubuntu:focal
           - ubuntu:jammy
-          - debian:buster
           - debian:bullseye
 
         include:
