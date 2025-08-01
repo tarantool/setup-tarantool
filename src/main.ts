@@ -11,6 +11,9 @@ const nightlyBuild =
   (core.getInput('nightly-build') || 'false').toUpperCase() === 'TRUE'
 const tarantool_version = core.getInput('tarantool-version', {required: true})
 
+// Debian/Ubuntu uses amd64/arm64 naming.
+const arch = core.platform.arch === 'x64' ? 'amd64' : core.platform.arch
+
 interface CaptureOptions {
   /** optional.  defaults to false */
   silent?: boolean
@@ -158,7 +161,7 @@ async function available_versions(
   const distro_id = (await lsb_release_id()).toLowerCase()
   const repo = baseUrl + '/' + distro_id + '/dists/' + distro
 
-  return http_get(`${repo}/main/binary-amd64/Packages`)
+  return http_get(`${repo}/main/binary-${arch}/Packages`)
     .then(response => {
       if (response.message.statusCode !== 200) {
         throw new Error(`server replied ${response.message.statusCode}`)
@@ -299,6 +302,10 @@ function dpkg_is_file_included(
 }
 
 async function run_linux(): Promise<void> {
+  if (arch !== 'amd64' && arch !== 'arm64') {
+    throw new Error(`Unsupported arch: ${arch}`)
+  }
+
   const distro = await lsb_release()
   const distro_id = (await lsb_release_id()).toLowerCase()
   const cache_dir = 'cache-tarantool'
@@ -309,7 +316,7 @@ async function run_linux(): Promise<void> {
   if (version == '') {
     throw new Error(
       `There is no tarantool ${tarantool_version} for ` +
-        `${distro_id} ${distro}`
+        `${distro_id} ${distro} ${arch}`
     )
   }
   core.info(`${version}`)
@@ -317,7 +324,7 @@ async function run_linux(): Promise<void> {
   if (core.getInput('cache-key')) {
     core.warning("Setup-tarantool input 'cache-key' is deprecated")
   }
-  let cache_key = `tarantool-setup-${distro}-${version}`
+  let cache_key = `tarantool-setup-${distro}-${version}-${arch}`
   // This for testing only
   cache_key += process.env['TARANTOOL_CACHE_KEY_SUFFIX'] || ''
 
