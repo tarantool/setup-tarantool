@@ -18,9 +18,9 @@ This action will set up [Tarantool](https://www.tarantool.io) environment and **
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - uses: tarantool/setup-tarantool@v3
+  - uses: tarantool/setup-tarantool@v4
     with:
-      tarantool-version: '2.10'
+      tarantool-version: '2.11'
   - run: tarantoolctl rocks install luatest
   - run: tarantoolctl rocks make
   - run: .rocks/bin/luatest -v
@@ -31,9 +31,9 @@ steps:
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - uses: tarantool/setup-tarantool@v3
+  - uses: tarantool/setup-tarantool@v4
     with:
-      tarantool-version: '2.10.4'
+      tarantool-version: '2.11.7'
 ```
 
 ### Install a nightly build
@@ -43,7 +43,7 @@ steps:
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - uses: tarantool/setup-tarantool@v3
+  - uses: tarantool/setup-tarantool@v4
     with:
       tarantool-version: '2.6'  # or, say, '2.6.1.0' for exact version
       nightly-build: true
@@ -89,7 +89,7 @@ jobs:
         run: |
           apt-get -y install sudo lsb-release gnupg ca-certificates rsync
 
-      - uses: tarantool/setup-tarantool@v3
+      - uses: tarantool/setup-tarantool@v4
         with:
           tarantool-version: '2.11'
 ```
