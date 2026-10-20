@@ -87,7 +87,7 @@ jobs:
 
       - name: Install setup-tarantool dependencies
         run: |
-          apt-get -y install sudo lsb-release gnupg ca-certificates rsync
+          apt-get -y install sudo lsb-release ca-certificates rsync
 
       - uses: tarantool/setup-tarantool@v4
         with:

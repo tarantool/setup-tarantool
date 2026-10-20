@@ -46,7 +46,7 @@ jobs:
           from-cache: false
 
       - name: Uninstall tarantool
-        run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
+        run: sudo dpkg --remove tarantool tarantool-dev tarantool-common
 
       - name: Setup from cache
         uses: ./
@@ -116,7 +116,7 @@ jobs:
           from-cache: false
 
       - name: Uninstall tarantool
-        run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
+        run: sudo dpkg --remove tarantool tarantool-dev tarantool-common
 
       - name: Install 1.10.14 (cached)
         uses: ./
@@ -173,7 +173,7 @@ jobs:
           from-cache: false
 
       - name: Uninstall tarantool
-        run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
+        run: sudo dpkg --remove tarantool tarantool-dev tarantool-common
 
       - name: Install 1.10 (non-cached)
         uses: ./
@@ -219,7 +219,7 @@ jobs:
           from-cache: false
 
       - name: Uninstall tarantool
-        run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
+        run: sudo dpkg --remove tarantool tarantool-dev tarantool-common
 
       - name: Install 1.10 (cached)
         uses: ./
@@ -267,7 +267,7 @@ jobs:
           from-cache: false
 
       - name: Uninstall tarantool
-        run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
+        run: sudo dpkg --remove tarantool tarantool-dev tarantool-common
 
       - name: Install 1.10.LATEST (nightly, cached)
         uses: ./
@@ -315,11 +315,16 @@ jobs:
           - '3.0'
           - '3.0.0'
         runs-on: [ubuntu-24.04, ubuntu-24.04-arm]
+        include:
+          # Only series-3 is available on Ubuntu 26.04.
+          - {runs-on: ubuntu-26.04, tarantool: '3'}
+          - {runs-on: ubuntu-26.04-arm, tarantool: '3'}
     runs-on: ${{ matrix.runs-on }}
     env:
       # github.run_id is the same across different jobs created
-      # from the same matrix.
-      TARANTOOL_CACHE_KEY_SUFFIX: -G-${{ matrix.tarantool }}-${{ github.run_id }}
+      # from the same matrix. The series-3 cache key is the same
+      # on all Ubuntu versions.
+      TARANTOOL_CACHE_KEY_SUFFIX: -G-${{ matrix.tarantool }}-${{ matrix.runs-on }}-${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
 
@@ -334,7 +339,7 @@ jobs:
           from-cache: false
 
       - name: Uninstall tarantool
-        run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
+        run: sudo dpkg --remove tarantool tarantool-dev tarantool-common
 
       - name: Install ${{ matrix.tarantool }} (cached)
         uses: ./

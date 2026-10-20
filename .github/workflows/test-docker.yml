@@ -30,6 +30,10 @@ jobs:
           - tarantool: '3.0'
             image: debian:bookworm
 
+          # Only series-3 is available on Ubuntu Resolute (26.04).
+          - tarantool: '3.0'
+            image: ubuntu:resolute
+
     container:
       image: ${{ matrix.image }}
 
@@ -56,7 +60,7 @@ jobs:
 
       - name: Install setup-tarantool dependencies
         run: |
-          apt-get -y install sudo lsb-release gnupg ca-certificates rsync
+          apt-get -y install sudo lsb-release ca-certificates rsync
 
       # Bring `node` executable file into PATH for latest-version
       # and verify-versions actions.
@@ -89,7 +93,7 @@ jobs:
           from-cache: false
 
       - name: Uninstall tarantool
-        run: sudo apt-get -y remove tarantool tarantool-dev tarantool-common
+        run: sudo dpkg --remove tarantool tarantool-dev tarantool-common
 
       - name: Setup from cache
         uses: ./

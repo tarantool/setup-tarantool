@@ -344,7 +344,23 @@ async function run_linux(): Promise<void> {
     }
 
     const gpgkey = Buffer.from(await response.readBody())
-    await exec.exec('sudo apt-key add - ', [], {input: gpgkey})
+    /*
+     * trusted.gpg.d makes the key trusted for every repository.
+     * Generally, it is not recommended. The modern recommendation
+     * is to use the per-repository signed-by attribute.
+     *
+     * However, we have to support Ubuntu 24.04 and we shouldn't
+     * fail if the same repository is added by the action and
+     * outside (say, by the installer.sh script). Adding the same
+     * repository with and without signed-by would fail with apt
+     * 2.8.3 that Ubuntu 24.04 ships. It is fixed in newer apt
+     * versions, see [1].
+     *
+     * [1]: https://salsa.debian.org/apt-team/apt/-/commit/4b537e415aa3888ffe029664bc8238078bdc880a
+     */
+    await exec.exec('sudo tee /etc/apt/trusted.gpg.d/tarantool.asc', [], {
+      input: gpgkey
+    })
   })
 
   await core.group('Setting up repository', async () => {
