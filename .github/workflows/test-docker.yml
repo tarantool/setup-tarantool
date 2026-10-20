@@ -19,7 +19,6 @@ jobs:
         image:
           - ubuntu:focal
           - ubuntu:jammy
-          - debian:bullseye
 
         include:
           # Only 2.11 is available on Debian Bookworm.
