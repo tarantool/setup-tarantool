@@ -30,7 +30,9 @@ jobs:
           - tarantool: '3.0'
             image: debian:bookworm
 
-          # Only series-3 is available on Ubuntu Resolute (26.04).
+          # Only 2.11 and series-3 are available on Ubuntu Resolute (26.04).
+          - tarantool: '2.11'
+            image: ubuntu:resolute
           - tarantool: '3.0'
             image: ubuntu:resolute
 
