@@ -6,6 +6,15 @@ branding:
 inputs:
   tarantool-version:
     description: Tarantool version
+  tt-version:
+    description: >-
+      tt version to install from GitHub releases, tt is not installed
+      if it is empty. Tarantool < 3 always gets tt 2
+    required: false
+  github-token:
+    description: Token to query tt releases with GitHub API
+    required: false
+    default: ${{ github.token }}
   nightly-build:
     description: Whether to install a nightly build
     required: false

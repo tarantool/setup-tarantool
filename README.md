@@ -36,6 +36,32 @@ steps:
       tarantool-version: '2.11.7'
 ```
 
+### Install tt
+
+The action installs [tt](https://github.com/tarantool/tt) if
+`tt-version` is given: the latest tt release that matches it is
+downloaded from GitHub. The version is given the same way as
+`tarantool-version`: `'2'`, `'2.15'` or `'2.15.0'`. Releases without
+an archive for the runner's arch are skipped.
+
+Pre-releases are installed only if requested exactly, say,
+`'3.0.0-alpha.1'`: `'3'` gives the latest stable tt 3.
+
+tt 3 doesn't support tarantool < 3, so tarantool 1.10 and 2.x get tt
+2 whatever `tt-version` is, with a warning if tt 3 is requested.
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - uses: tarantool/setup-tarantool@v4
+    with:
+      tarantool-version: '3'
+      tt-version: '2'
+```
+
+The releases are looked up with GitHub API using the `github-token`
+input, which is the job's token by default.
+
 ### Install a nightly build
 
 *Important:* nightly builds are not available for 2.10.0 and newer.

@@ -6,6 +6,8 @@ import * as io from '@actions/io'
 
 import * as path from 'path'
 import * as fs from 'fs'
+import * as os from 'os'
+import {pipeline} from 'stream/promises'
 
 const nightlyBuild =
   (core.getInput('nightly-build') || 'false').toUpperCase() === 'TRUE'
@@ -80,12 +82,16 @@ async function lsb_release_id(): Promise<string> {
 }
 
 let _httpc: httpm.HttpClient
-async function http_get(url: string): Promise<httpm.HttpClientResponse> {
+function http_client(): httpm.HttpClient {
   if (!_httpc) {
     _httpc = new httpm.HttpClient('httpc')
   }
+  return _httpc
+}
+
+async function http_get(url: string): Promise<httpm.HttpClientResponse> {
   core.info('HTTP GET ' + url)
-  return _httpc.get(url)
+  return http_client().get(url)
 }
 
 async function dpkg_list(): Promise<Set<string>> {
@@ -432,6 +438,144 @@ async function run_linux(): Promise<void> {
   await io.rmRF(cache_dir)
 }
 
+interface GitHubRelease {
+  tag_name: string
+  draft: boolean
+  prerelease: boolean
+  assets: {name: string}[]
+}
+
+function tt_archive_name(version: string): string {
+  return `tt-${version}-linux-${arch}.tar.gz`
+}
+
+/*
+ * tt is installed only if requested. tt 3 doesn't support
+ * tarantool < 3, so tt 2 is installed for it whatever is
+ * requested.
+ */
+function tt_version_prefix(): string {
+  const requested = core.getInput('tt-version')
+  if (
+    requested &&
+    tarantool_version_major() < 3 &&
+    Number(requested.split('.')[0]) >= 3
+  ) {
+    core.warning(
+      `tt ${requested} doesn't support tarantool ${tarantool_version}, ` +
+        `installing tt 2 instead`
+    )
+    return '2'
+  }
+  return requested
+}
+
+/*
+ * tt versions are taken from the tags of its GitHub releases,
+ * say, v2.15.0. Drafts and releases without an archive for the
+ * arch (say, 2.15.1 has no arm64 one) are skipped. A pre-release,
+ * say, 3.0.0-alpha.1, is taken only if it is requested exactly,
+ * so tt 3 gives the latest stable tt 3.
+ */
+async function tt_available_versions(
+  version_prefix: string
+): Promise<Array<string>> {
+  let headers: {[name: string]: string} = {
+    Accept: 'application/vnd.github+json'
+  }
+  /*
+   * An unauthenticated client may perform only 60 requests per
+   * hour, so pass a token if there is one. It is valid for
+   * github.com only, not for a GitHub Enterprise Server.
+   */
+  const token = core.getInput('github-token')
+  if (token && process.env['GITHUB_SERVER_URL'] === 'https://github.com') {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  let versions = new Array<string>()
+  for (let page = 1; ; page++) {
+    const url =
+      'https://api.github.com/repos/tarantool/tt/releases' +
+      `?per_page=100&page=${page}`
+    core.info('HTTP GET ' + url)
+    const response = await http_client().getJson<GitHubRelease[]>(url, headers)
+    const releases = response.result || []
+    if (releases.length === 0) {
+      return versions
+    }
+    releases
+      .filter(r => !r.draft)
+      .forEach(r => {
+        const v = r.tag_name.replace(/^v/, '')
+        if (
+          (v === version_prefix ||
+            (!r.prerelease && v.startsWith(version_prefix + '.'))) &&
+          r.assets.some(a => a.name === tt_archive_name(v))
+        ) {
+          versions.push(v)
+        }
+      })
+  }
+}
+
+async function tt_latest_version(version_prefix: string): Promise<string> {
+  let max = ''
+  ;(await tt_available_versions(version_prefix)).forEach(v => {
+    max = semver_max(max, v)
+  })
+  return max
+}
+
+/*
+ * tt is a static executable, so it is taken from the release
+ * archive as is and added to PATH.
+ */
+async function install_tt(): Promise<void> {
+  const tt_prefix = tt_version_prefix()
+  if (!tt_prefix) {
+    return
+  }
+
+  core.startGroup(`Checking latest tt ${tt_prefix} version`)
+  const version = await tt_latest_version(tt_prefix)
+  if (version == '') {
+    throw new Error(`There is no tt ${tt_prefix} release for ${arch}`)
+  }
+  core.info(`${version}`)
+  core.endGroup()
+
+  // A self-hosted runner keeps the tool cache between jobs.
+  const tool_cache = process.env['RUNNER_TOOL_CACHE'] || os.tmpdir()
+  const dir = path.join(tool_cache, 'tt', version, arch)
+  if (fs.existsSync(path.join(dir, 'tt'))) {
+    core.info(`tt ${version} is found in ${dir}`)
+    core.addPath(dir)
+    return
+  }
+
+  await core.group(`Installing tt ${version}`, async () => {
+    const name = tt_archive_name(version)
+    const url =
+      'https://github.com/tarantool/tt/releases/download/' +
+      `v${version}/${name}`
+    const response = await http_get(url)
+    if (response.message.statusCode !== 200) {
+      throw new Error(`server replied ${response.message.statusCode}`)
+    }
+
+    const temp = process.env['RUNNER_TEMP'] || os.tmpdir()
+    const archive = path.join(temp, name)
+    await pipeline(response.message, fs.createWriteStream(archive))
+
+    await io.mkdirP(dir)
+    await exec.exec('tar', ['-xzf', archive, '-C', dir, 'tt'])
+    await io.rmRF(archive)
+  })
+
+  core.addPath(dir)
+}
+
 export async function run(): Promise<void> {
   if (process.platform !== 'linux') {
     core.setFailed(`Action doesn't support ${process.platform} platform`)
@@ -441,6 +585,14 @@ export async function run(): Promise<void> {
   await run_linux()
     .then(_ => {
       return exec.exec('tarantool --version')
+    })
+    .then(_ => {
+      return install_tt()
+    })
+    .then(_ => {
+      if (core.getInput('tt-version')) {
+        return exec.exec('tt version')
+      }
     })
     .catch(error => {
       if (error instanceof Error) {
