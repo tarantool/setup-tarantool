@@ -355,6 +355,70 @@ jobs:
           tarantool-version: '${{ matrix.tarantool }}'
           from-cache: true
 
+  # This test case verifies that tt is installed only if
+  # requested and which tt version is installed: the requested
+  # one (a pre-release if requested exactly), but tt 2 for
+  # tarantool < 3 even if tt 3 is requested.
+  test-tt:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {tarantool: '2.11', tt: '', expected: ''}
+          - {tarantool: '2.11', tt: '2', expected: '2.'}
+          - {tarantool: '2.11', tt: '2.14', expected: '2.14.'}
+          - {tarantool: '2.11', tt: '2.14.0', expected: '2.14.0'}
+          - {tarantool: '2.11', tt: '3', expected: '2.'}
+          - {tarantool: '2.11', tt: '3.0.0-alpha.1', expected: '2.'}
+          - {tarantool: '3', tt: '2', expected: '2.'}
+          - {tarantool: '3', tt: '3.0.0-alpha.1', expected: '3.'}
+          - {tarantool: '3', tt: '2', expected: '2.', arm: '-arm'}
+          - {tarantool: '3', tt: '3.0.0-alpha.1', expected: '3.', arm: '-arm'}
+    runs-on: ubuntu-24.04${{ matrix.arm }}
+    env:
+      TARANTOOL_CACHE_KEY_SUFFIX: -J-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ${{ matrix.tarantool }}, tt '${{ matrix.tt }}'
+        uses: ./
+        with:
+          tarantool-version: '${{ matrix.tarantool }}'
+          tt-version: '${{ matrix.tt }}'
+
+      - name: Verify that tt is not installed
+        if: matrix.expected == ''
+        run: |
+          ! command -v tt
+
+      - name: Verify tt version
+        if: matrix.expected != ''
+        run: |
+          version="$(tt version --short)"
+          echo "${version}"
+          [[ "${version}" == ${{ matrix.expected }}* ]]
+
+  # There is no tt 2.99 release. Verify that an attempt to install
+  # it fails.
+  test-tt-unknown-version:
+    runs-on: ubuntu-latest
+    env:
+      TARANTOOL_CACHE_KEY_SUFFIX: -J-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Attempt to install tt 2.99 (expect failure)
+        uses: ./
+        with:
+          tarantool-version: '3'
+          tt-version: '2.99'
+        continue-on-error: true
+        id: install
+
+      - name: Verify that the previous step fails
+        run: |
+          [ "${{ steps.install.outcome }}" = "failure" ]
+
   # There is no 1.10.999 build. Verify that an attempt to install
   # it fails.
   test-unknown-version:
