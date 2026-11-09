@@ -40145,6 +40145,8 @@ const exec = __importStar(__nccwpck_require__(95236));
 const io = __importStar(__nccwpck_require__(94994));
 const path = __importStar(__nccwpck_require__(16928));
 const fs = __importStar(__nccwpck_require__(79896));
+const os = __importStar(__nccwpck_require__(70857));
+const promises_1 = __nccwpck_require__(49786);
 const nightlyBuild = (core.getInput('nightly-build') || 'false').toUpperCase() === 'TRUE';
 const tarantool_version = core.getInput('tarantool-version', { required: true });
 // Debian/Ubuntu uses amd64/arm64 naming.
@@ -40495,6 +40497,110 @@ async function run_linux() {
     }
     await io.rmRF(cache_dir);
 }
+function tt_archive_name(version) {
+    return `tt-${version}-linux-${arch}.tar.gz`;
+}
+/*
+ * tt is installed only if requested. tt 3 doesn't support
+ * tarantool < 3, so tt 2 is installed for it whatever is
+ * requested.
+ */
+function tt_version_prefix() {
+    const requested = core.getInput('tt-version');
+    if (requested &&
+        tarantool_version_major() < 3 &&
+        Number(requested.split('.')[0]) >= 3) {
+        core.warning(`tt ${requested} doesn't support tarantool ${tarantool_version}, ` +
+            `installing tt 2 instead`);
+        return '2';
+    }
+    return requested;
+}
+/*
+ * tt versions are taken from the tags of its repository, say,
+ * v2.15.0: each tag has a GitHub release. `git ls-remote` needs
+ * no token, unlike GitHub API, which allows an anonymous client
+ * only 60 requests per hour.
+ *
+ * A tag with a suffix, say, v3.0.0-alpha.1, is a pre-release. It
+ * is taken only if it is requested exactly, so tt 3 gives the
+ * latest stable tt 3.
+ *
+ * The versions are sorted from the latest to the oldest one.
+ */
+async function tt_versions(version_prefix) {
+    const output = await capture('git ls-remote --tags --refs https://github.com/tarantool/tt.git', { silent: true });
+    let versions = new Array();
+    output.split('\n').forEach(line => {
+        const match = line.match(/\trefs\/tags\/v(\d.*)$/);
+        if (!match) {
+            return;
+        }
+        const v = match[1];
+        if (v === version_prefix ||
+            (!v.includes('-') && v.startsWith(version_prefix + '.'))) {
+            versions.push(v);
+        }
+    });
+    return versions.sort((a, b) => (semver_max(a, b) === a ? -1 : 1));
+}
+/*
+ * tt is a static executable, so it is taken from the release
+ * archive as is and added to PATH.
+ */
+async function install_tt() {
+    const tt_prefix = tt_version_prefix();
+    if (!tt_prefix) {
+        return;
+    }
+    core.startGroup(`Installing tt ${tt_prefix}`);
+    const temp = process.env['RUNNER_TEMP'] || os.tmpdir();
+    // A self-hosted runner keeps the tool cache between jobs.
+    const tool_cache = process.env['RUNNER_TOOL_CACHE'] || os.tmpdir();
+    for (const version of await tt_versions(tt_prefix)) {
+        const dir = path.join(tool_cache, 'tt', version, arch);
+        if (fs.existsSync(path.join(dir, 'tt'))) {
+            core.info(`tt ${version} is found in ${dir}`);
+            core.addPath(dir);
+            core.endGroup();
+            return;
+        }
+        const name = tt_archive_name(version);
+        const url = 'https://github.com/tarantool/tt/releases/download/' +
+            `v${version}/${name}`;
+        const response = await http_get(url);
+        /*
+         * Some releases have no archive for the arch, say, 2.15.1
+         * has no arm64 one. The archives of a just tagged release
+         * may be not uploaded yet too.
+         */
+        if (response.message.statusCode === 404) {
+            response.message.resume();
+            core.info(`tt ${version} has no ${arch} archive, skipping`);
+            continue;
+        }
+        if (response.message.statusCode !== 200) {
+            throw new Error(`server replied ${response.message.statusCode}`);
+        }
+        const archive = path.join(temp, name);
+        await (0, promises_1.pipeline)(response.message, fs.createWriteStream(archive));
+        /*
+         * Don't leave a partially unpacked executable in the tool
+         * cache: it would be found by the next job.
+         */
+        const unpacked = fs.mkdtempSync(path.join(temp, 'tt-'));
+        await exec.exec('tar', ['-xzf', archive, '-C', unpacked, 'tt']);
+        await io.mkdirP(dir);
+        await io.mv(path.join(unpacked, 'tt'), path.join(dir, 'tt'));
+        await io.rmRF(unpacked);
+        await io.rmRF(archive);
+        core.info(`tt ${version} is installed into ${dir}`);
+        core.addPath(dir);
+        core.endGroup();
+        return;
+    }
+    throw new Error(`There is no tt ${tt_prefix} release for ${arch}`);
+}
 async function run() {
     if (process.platform !== 'linux') {
         core.setFailed(`Action doesn't support ${process.platform} platform`);
@@ -40503,6 +40609,14 @@ async function run() {
     await run_linux()
         .then(_ => {
         return exec.exec('tarantool --version');
+    })
+        .then(_ => {
+        return install_tt();
+    })
+        .then(_ => {
+        if (core.getInput('tt-version')) {
+            return exec.exec('tt version');
+        }
     })
         .catch(error => {
         if (error instanceof Error) {
@@ -40758,6 +40872,14 @@ module.exports = require("querystring");
 
 "use strict";
 module.exports = require("stream");
+
+/***/ }),
+
+/***/ 49786:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("stream/promises");
 
 /***/ }),
 
