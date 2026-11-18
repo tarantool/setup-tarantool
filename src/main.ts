@@ -3,6 +3,7 @@ import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as io from '@actions/io'
+import * as tc from '@actions/tool-cache'
 
 import * as path from 'path'
 import * as fs from 'fs'
@@ -432,15 +433,183 @@ async function run_linux(): Promise<void> {
   await io.rmRF(cache_dir)
 }
 
+function tt_archive_name(version: string): string {
+  return `tt-${version}-linux-${arch}.tar.gz`
+}
+
+/*
+ * Returns the prefix of the tt versions to install: say, '2',
+ * '2.15', '2.15.0' or '' for any stable tt. undefined means
+ * that tt isn't requested.
+ *
+ * tt 3 doesn't support tarantool < 3. 'any' gives the latest tt
+ * that supports the tarantool version: tt 2 for tarantool < 3.
+ * Another version is installed as requested or the action
+ * fails, so tt 3 for tarantool < 3 is an error.
+ */
+function tt_version_prefix(): string | undefined {
+  const requested = core.getInput('tt-version')
+  if (!requested) {
+    return undefined
+  }
+  const tt_2_only = tarantool_version_major() < 3
+  if (requested === 'any') {
+    return tt_2_only ? '2' : ''
+  }
+  if (tt_2_only && Number(requested.split('.')[0]) >= 3) {
+    throw new Error(
+      `tt ${requested} doesn't support tarantool ${tarantool_version}, ` +
+        `request tt 2 or 'any'`
+    )
+  }
+  return requested
+}
+
+/*
+ * tt versions are taken from the tags of its repository, say,
+ * v2.15.0: each tag has a GitHub release. The tags are fetched
+ * the same way as `git ls-remote` does it, but without the git
+ * executable, which a container image may miss. Unlike GitHub
+ * API, which allows an anonymous client only 60 requests per
+ * hour, it needs no token.
+ *
+ * A tag with a suffix, say, v3.0.0-alpha.1, is a pre-release. It
+ * is taken only if it is requested exactly, so tt 3 gives the
+ * latest stable tt 3. The '' prefix gives all stable versions.
+ *
+ * The versions are sorted from the latest to the oldest one.
+ */
+async function tt_versions(version_prefix: string): Promise<Array<string>> {
+  const response = await http_get(
+    'https://github.com/tarantool/tt.git/info/refs?service=git-upload-pack'
+  )
+  if (response.message.statusCode !== 200) {
+    response.message.resume()
+    throw new Error(`server replied ${response.message.statusCode}`)
+  }
+  const body = await response.readBody()
+
+  let versions = new Array<string>()
+  body.split('\n').forEach(line => {
+    /*
+     * A line is a pkt-line of git's smart HTTP protocol:
+     * <length><sha> refs/tags/v2.15.0. The first ref also has
+     * \0<capabilities> after it. An annotated tag has one more
+     * line for the commit it points to, refs/tags/v2.15.0^{}:
+     * it is skipped.
+     */
+    const match = line.match(/ refs\/tags\/v(\d[^\s^\0]*)(\0|$)/)
+    if (!match) {
+      return
+    }
+    const v = match[1]
+    if (
+      v === version_prefix ||
+      (!v.includes('-') &&
+        (!version_prefix || v.startsWith(version_prefix + '.')))
+    ) {
+      versions.push(v)
+    }
+  })
+  return versions.sort((a, b) => (semver_max(a, b) === a ? -1 : 1))
+}
+
+/*
+ * tt is a static executable, so it is taken from the release
+ * archive as is and added to PATH.
+ */
+async function install_tt(tt_prefix: string): Promise<void> {
+  const tt_name = tt_prefix ? `tt ${tt_prefix}` : 'tt'
+  await core.group(`Installing ${tt_name}`, async () => {
+    for (const version of await tt_versions(tt_prefix)) {
+      /*
+       * A self-hosted runner keeps the tool cache between jobs.
+       * tc.find() takes only a completely cached tt.
+       */
+      const cached = tc.find('tt', version, arch)
+      if (cached) {
+        core.info(`tt ${version} is found in ${cached}`)
+        core.addPath(cached)
+        return
+      }
+
+      const url =
+        'https://github.com/tarantool/tt/releases/download/' +
+        `v${version}/${tt_archive_name(version)}`
+      core.info('HTTP GET ' + url)
+      let archive: string
+      try {
+        archive = await tc.downloadTool(url)
+      } catch (error) {
+        /*
+         * Some releases have no archive for the arch, say,
+         * 2.15.1 has no arm64 one. The archives of a just tagged
+         * release may be not uploaded yet too.
+         */
+        if (error instanceof tc.HTTPError && error.httpStatusCode === 404) {
+          core.info(`tt ${version} has no ${arch} archive, skipping`)
+          continue
+        }
+        throw error
+      }
+
+      /*
+       * The files in the archive are owned by uid 1001: don't
+       * restore the owner if the action is run by root, say, in
+       * a container job.
+       */
+      const unpacked = await tc.extractTar(archive, undefined, [
+        'xz',
+        '--no-same-owner'
+      ])
+      /*
+       * The tool cache may be on another filesystem than the
+       * temporary directory, say, both are separate mounts in a
+       * container job. So tt is copied, not moved.
+       */
+      const dir = await tc.cacheFile(
+        path.join(unpacked, 'tt'),
+        'tt',
+        'tt',
+        version,
+        arch
+      )
+      await io.rmRF(unpacked)
+      await io.rmRF(archive)
+
+      core.info(`tt ${version} is installed into ${dir}`)
+      core.addPath(dir)
+      return
+    }
+
+    throw new Error(`There is no ${tt_name} release for ${arch}`)
+  })
+}
+
 export async function run(): Promise<void> {
   if (process.platform !== 'linux') {
     core.setFailed(`Action doesn't support ${process.platform} platform`)
     return
   }
 
-  await run_linux()
+  let tt_prefix: string | undefined
+  await Promise.resolve()
+    .then(_ => {
+      /*
+       * tt-version is checked before tarantool is installed to
+       * fail early if it is wrong.
+       */
+      tt_prefix = tt_version_prefix()
+      return run_linux()
+    })
     .then(_ => {
       return exec.exec('tarantool --version')
+    })
+    .then(async _ => {
+      if (tt_prefix !== undefined) {
+        await install_tt(tt_prefix)
+        await exec.exec('tt version')
+      }
     })
     .catch(error => {
       if (error instanceof Error) {

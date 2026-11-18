@@ -6,6 +6,12 @@ branding:
 inputs:
   tarantool-version:
     description: Tarantool version
+  tt-version:
+    description: >-
+      tt version to install from GitHub releases or 'any' for the
+      latest tt that supports the tarantool version, tt is not
+      installed if it is empty. tt 3 doesn't support tarantool < 3
+    required: false
   nightly-build:
     description: Whether to install a nightly build
     required: false
