@@ -36,6 +36,33 @@ steps:
       tarantool-version: '2.11.7'
 ```
 
+### Install tt
+
+The action installs [tt](https://github.com/tarantool/tt) if
+`tt-version` is given: the latest tt release that matches it is
+downloaded from GitHub. The version is given the same way as
+`tarantool-version`: `'2'`, `'2.15'` or `'2.15.0'`. Releases without
+an archive for the runner's arch are skipped. The action fails if
+there is no matching release with such an archive.
+
+Pre-releases are installed only if requested exactly, say,
+`'3.0.0-alpha.1'`: `'3'` gives the latest stable tt 3.
+
+tt 3 doesn't support tarantool < 3, so the action fails if tt 3 is
+requested for tarantool 1.10 or 2.x. `'any'` gives the latest stable
+tt that supports the tarantool version: the latest stable tt 2 for
+tarantool 1.10 and 2.x, the latest stable tt of any series for
+tarantool 3 (tt 2 while tt 3 has pre-releases only).
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - uses: tarantool/setup-tarantool@v4
+    with:
+      tarantool-version: '3'
+      tt-version: 'any'  # or, say, '2' or '2.15.0'
+```
+
 ### Install a nightly build
 
 *Important:* nightly builds are not available for 2.10.0 and newer.
@@ -57,6 +84,11 @@ self-hosted runner and a docker image may miss them.
 
 Configuring `apt-get` to skip recommended and suggested packages reduces the
 cache size from \~200MiB to \~30MiB.
+
+tt needs no more dependencies: the action downloads it on its own and
+unpacks it with `tar` and `gzip`, which every Debian and Ubuntu image
+has. A self-hosted runner keeps tt in its tool cache
+(`RUNNER_TOOL_CACHE`) between jobs, so tt is downloaded only once there.
 
 ```yaml
 jobs:

@@ -87,6 +87,7 @@ jobs:
         uses: ./
         with:
           tarantool-version: ${{ matrix.tarantool }}
+          tt-version: any
 
       - name: Check precise version
         uses: ./.github/actions/verify-version
@@ -94,13 +95,25 @@ jobs:
           tarantool-version: '${{ steps.latest-version.outputs.abc-d }}'
           from-cache: false
 
+      # 'any' gives a stable tt: tt 2 for tarantool < 3, which tt
+      # 3 doesn't support. For tarantool 3 it is the latest stable
+      # tt, test-tt in test.yml verifies it.
+      - name: Verify tt version
+        run: |
+          version="$(tt version --short)"
+          echo "${version}"
+          case "${version}" in *-*) exit 1;; esac
+          [ "${{ matrix.tarantool }}" = '3.0' ] || [ "${version%%.*}" = 2 ]
+
       - name: Uninstall tarantool
         run: sudo dpkg --remove tarantool tarantool-dev tarantool-common
 
+      # tt is taken from the tool cache this time.
       - name: Setup from cache
         uses: ./
         with:
           tarantool-version: ${{ matrix.tarantool }}
+          tt-version: any
 
       - name: Verify install from cache
         uses: ./.github/actions/verify-version
